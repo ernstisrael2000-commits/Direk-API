@@ -1,0 +1,111 @@
+Salut ! Je veux que tu m'aides à construire un nouveau site web complet 
+appelé "Direk API". J'ai déjà le design des 5 pages du site, prêt dans 
+un fichier zip que je vais uploader. Ne construis pas tout d'un coup — 
+fais une chose à la fois et montre-moi le résultat avant de continuer.
+
+ÉTAPE 0 — INTÉGRATION DU DESIGN
+J'ai uploadé un fichier zip contenant le design de mes 5 pages (créées 
+avec un outil de design). Décompresse-le et intègre ces pages telles 
+quelles comme base du frontend du projet. Ne change rien au design visuel 
+pour l'instant — garde exactement les couleurs, mise en page et style 
+déjà faits. On va juste connecter ces pages à la logique serveur ensuite. 
+Confirme-moi que les 5 pages s'affichent correctement avant qu'on continue.
+
+CE QUE C'EST :
+Direk API est une plateforme où des gens (je vais les appeler "resellers") 
+peuvent recharger un solde chez moi, puis utiliser mon API pour acheter 
+des recharges de jeux (on commence avec Free Fire, mais je vais ajouter 
+d'autres jeux/services plus tard). Moi je passe la commande auprès d'un 
+fournisseur officiel derrière, et le reseller ne voit jamais ce fournisseur — 
+il ne voit que mon système à moi.
+
+LA BASE DE DONNÉES :
+Utilise Supabase (PostgreSQL) pour stocker toutes les données. Configure 
+la connexion Supabase dans ce projet Replit dès le départ.
+
+Crée ces tables dans Supabase :
+
+1. "resellers" — les comptes de mes utilisateurs
+   - id, nom, email, une clé API secrète (générée et cachée/hashée), 
+     un solde (en centimes, jamais de virgule flottante), un statut 
+     (actif ou suspendu), une date de création
+
+2. "produits" — le catalogue de ce que je vends (pour pouvoir ajouter 
+   facilement d'autres jeux plus tard sans tout reconstruire)
+   - id, nom du fournisseur (ex: "freefire"), nom du produit 
+     (ex: "100 diamants"), le code que le fournisseur attend, mon prix 
+     d'achat, mon prix de vente au reseller, actif (oui/non)
+
+3. "wallet_transactions" — l'historique des recharges de solde faites 
+   par mes resellers via Pay'm (paymplopplop.com, ma passerelle de 
+   paiement haïtienne)
+   - id, reseller_id, montant, une référence unique que je génère, 
+     un statut (en attente / confirmé / expiré), date
+
+4. "api_transactions" — l'historique de chaque recharge de jeu achetée
+   - id, reseller_id, produit_id, id du joueur qui reçoit la recharge, 
+     prix facturé au reseller, prix payé au fournisseur, un statut 
+     (réservé / succès / échec / remboursé), référence du fournisseur, date
+
+IMPORTANT SUR LA SÉCURITÉ :
+Personne ne doit pouvoir modifier son solde directement depuis le site 
+ou en trafiquant une requête. Active la sécurité au niveau des lignes 
+(Row Level Security) sur Supabase et bloque tout accès direct aux tables 
+depuis le navigateur. Toutes les opérations sensibles (créer un compte, 
+débiter un solde, créditer un solde) doivent passer par des fonctions 
+serveur (Edge Functions) que toi tu écris, jamais directement depuis 
+le frontend.
+
+CONSTRUIS-MOI CES FONCTIONS SERVEUR, UNE PAR UNE, DANS CET ORDRE :
+
+ÉTAPE 1 — "creer-reseller"
+Crée un nouveau compte reseller. Génère une clé API secrète longue et 
+aléatoire, cache-la de façon sécurisée dans la base, et affiche-la moi 
+une seule fois à l'écran (elle ne doit plus jamais être visible après, 
+seulement régénérable). Connecte cette fonction à la page d'inscription 
+déjà présente dans le design. Teste en créant un reseller de test et 
+montre-moi que ça marche avant de continuer.
+
+ÉTAPE 2 — "gerer-produits"
+Une interface simple (admin seulement, moi) où je peux ajouter, modifier 
+ou désactiver des produits dans le catalogue — sans toucher au code.
+
+ÉTAPE 3 — "recharger-solde"
+Quand un reseller veut ajouter de l'argent à son solde : crée une demande 
+en attente, génère une référence unique, puis appelle l'API de Pay'm 
+pour démarrer le paiement, et redirige le reseller vers la page de 
+paiement Pay'm. Connecte au bouton "recharger" déjà présent dans le design.
+
+ÉTAPE 4 — "webhook-paym"
+Un point d'entrée qui reçoit la confirmation de paiement de Pay'm. 
+Vérifie que la requête vient bien de Pay'm (pas d'un imposteur), 
+revérifie le vrai statut du paiement directement auprès de l'API Pay'm 
+(ne fais jamais confiance seulement au webhook), et si tout est confirmé 
+et que ce paiement n'a pas déjà été traité avant, crédite le solde du 
+reseller de façon sûre (une seule opération qui ne peut pas être coupée 
+à moitié).
+
+ÉTAPE 5 — "demander-recharge"
+C'est la fonction principale que mes resellers vont utiliser. Le reseller 
+envoie sa clé API, l'ID du joueur, et le produit voulu. Tu dois :
+- vérifier que la clé API est valide et que le compte est actif
+- limiter le nombre de requêtes par minute pour éviter les abus
+- vérifier que le reseller a assez de solde
+- réserver (débiter) le montant immédiatement
+- appeler l'API du fournisseur officiel pour exécuter la vraie recharge
+- si ça marche : confirmer la transaction et informer le reseller
+- si ça échoue : rembourser automatiquement le solde et informer le 
+  reseller de l'échec
+
+ÉTAPE 6 — "regenerer-cle-api"
+Permet à un reseller de générer une nouvelle clé API si besoin, 
+l'ancienne devient invalide.
+
+ÉTAPE 7 — CONNECTER LE TABLEAU DE BORD DÉJÀ DESIGNÉ
+Branche les vraies données sur les pages déjà créées : solde actuel, 
+historique des transactions, bouton recharger, clé API cachée avec 
+bouton régénérer, liste des produits.
+
+Commence par l'ÉTAPE 0 (intégration du zip), puis l'ÉTAPE 1. Explique-moi 
+simplement ce que tu as fait, montre-moi comment le tester, et attends 
+ma confirmation avant de passer à l'étape suivante.
