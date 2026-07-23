@@ -1,5 +1,15 @@
 # Direct API — Journal du projet
 
+## Règles du projet (lire avant de coder)
+| Fichier | Contenu |
+|---------|---------|
+| `docs/SECURITY_RULES.md` | Frontend non fiable, secrets côté serveur uniquement, validation obligatoire |
+| `docs/DATABASE_RULES.md` | RLS sur toutes les tables, montants en INTEGER (centimes), opérations atomiques |
+| `docs/WALLET_SECURITY.md` | Crédit/débit contrôlés, protection double paiement, processus recharge |
+| `docs/API_DESIGN_RULES.md` | Versioning `/api/v1/`, format réponse standard, codes HTTP, rate limiting |
+| `docs/PROVIDER_INTEGRATION.md` | Fournisseur invisible du reseller, gestion erreur + remboursement, timeout |
+| `docs/DEVELOPMENT_WORKFLOW.md` | Une phase à la fois, validation obligatoire avant de continuer |
+
 ## Vue d'ensemble
 **Direct API** est une plateforme B2B de recharge de jeux (Free Fire, et d'autres à venir).
 Des "resellers" rechargent un solde chez le propriétaire, puis appellent une API pour déclencher des recharges de jeux pour leurs clients. Le propriétaire passe commande auprès d'un fournisseur officiel en coulisse — le reseller ne le voit jamais.
