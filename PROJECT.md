@@ -18,7 +18,8 @@ Stack prévu :
 - **Frontend** : pages HTML/CSS issues d'un fichier ZIP de design (5 pages)
 - **Base de données** : Supabase (PostgreSQL) avec Row Level Security activée
 - **Serveur** : Supabase Edge Functions (Deno) pour toutes les opérations sensibles
-- **Paiement** : Pay'm (paymplopplop.com) — passerelle haïtienne
+- **Paiement wallet** : Pay'm (paymplopplop.com) — passerelle haïtienne (resellers rechargent leur solde)
+- **Fournisseur recharges** : À identifier — API externe pour exécuter les vraies recharges Free Fire (invisible au reseller)
 - **Hébergement** : Replit
 
 ---
