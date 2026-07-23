@@ -12,8 +12,10 @@
     h1, h2, h3 { font-family: 'Clash Grotesk', sans-serif; }
     .animate-spin { animation: spin 1s linear infinite; }
     @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+    body { visibility: hidden }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/petite-vue@0.4.1/dist/petite-vue.iife.js" defer init></script>
+  <script>(async()=>{try{const r=await fetch('/api/v1/auth/me');if(r.ok){window.location.replace('/')}else{document.body.style.visibility='visible'}}catch(e){document.body.style.visibility='visible'}})();</script>
 </head>
 <body class="min-h-screen bg-[#F8FAFC] flex flex-col">
 

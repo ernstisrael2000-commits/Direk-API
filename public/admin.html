@@ -10,8 +10,10 @@
   <style>
     body { font-family: 'Satoshi', sans-serif; -webkit-tap-highlight-color: transparent; }
     h1, h2, h3 { font-family: 'Clash Grotesk', sans-serif; }
+    body { visibility: hidden }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/petite-vue@0.4.1/dist/petite-vue.iife.js" defer init></script>
+  <script>(async()=>{try{const r=await fetch('/api/v1/auth/me');if(r.status===401){window.location.replace('/login')}else{document.body.style.visibility='visible'}}catch(e){document.body.style.visibility='visible'}})();</script>
 </head>
 <body class="bg-[#F8FAFC] min-h-screen flex flex-col">
 

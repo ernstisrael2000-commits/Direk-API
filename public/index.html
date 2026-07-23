@@ -23,9 +23,11 @@
     @keyframes fade-in  { from { opacity:0 } to { opacity:1 } }
     .animate-spin { animation: spin 1s linear infinite; }
     @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+    body { visibility: hidden }
   </style>
   <meta name="view-transition" content="same-origin">
   <script src="https://cdn.jsdelivr.net/npm/petite-vue@0.4.1/dist/petite-vue.iife.js" defer init></script>
+  <script>(async()=>{try{const r=await fetch('/api/v1/auth/me');if(r.status===401){window.location.replace('/login')}else{document.body.style.visibility='visible'}}catch(e){document.body.style.visibility='visible'}})();</script>
 </head>
 <body>
 <div v-scope="{
