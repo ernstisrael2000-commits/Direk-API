@@ -25,7 +25,18 @@ Stack prévu :
 ---
 
 ## État actuel
-- [ ] Aucune étape réalisée — phase de planification uniquement
+- [ ] Aucune étape réalisée — phase de planification terminée, prêt à coder
+
+## Décisions techniques confirmées
+- **Backend** : Node.js + Express.js (TypeScript) sur Replit
+- **Frontend** : HTML/CSS + petite-vue (déjà dans le design) + Tailwind CDN — **pas de React/Vue**
+- **Base de données** : Supabase PostgreSQL (accès serveur uniquement via service role key)
+- **Préfixe clé API reseller** : `dk_live_`
+- **Endpoint recharge** : `POST /api/v1/recharge` (confirmé par le design page 4)
+- **Frais wallet Pay'm** : 1.5% affichés côté frontend
+- **2 pages à créer** dans le même style (Tailwind + palette bleu/violet) :
+  - Page login / inscription reseller
+  - Page admin (gestion catalogue produits)
 
 ---
 
