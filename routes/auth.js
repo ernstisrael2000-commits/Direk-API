@@ -112,9 +112,17 @@ router.get('/google', async (req, res) => {
     return res.redirect('/login?error=supabase_non_configure');
   }
 
-  const host = req.headers['x-forwarded-host'] || req.headers.host || process.env.REPLIT_DEV_DOMAIN;
-  const proto = host.includes('localhost') ? 'http' : 'https';
-  const redirectTo = `${proto}://${host}/api/v1/auth/callback`;
+  // APP_URL doit être défini en production (ex: https://directapi.com)
+  // En développement, on détecte automatiquement depuis les headers HTTP
+  const appUrl = process.env.APP_URL;
+  let redirectTo;
+  if (appUrl) {
+    redirectTo = `${appUrl.replace(/\/$/, '')}/api/v1/auth/callback`;
+  } else {
+    const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:3000';
+    const proto = (req.headers['x-forwarded-proto'] === 'https' || !host.includes('localhost')) ? 'https' : 'http';
+    redirectTo = `${proto}://${host}/api/v1/auth/callback`;
+  }
 
   const { data, error } = await authClient.auth.signInWithOAuth({
     provider: 'google',
