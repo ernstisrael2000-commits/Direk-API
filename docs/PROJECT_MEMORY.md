@@ -1,4 +1,4 @@
-# Direct API - Project Memory
+# Direk API - Project Memory
 
 ## Objectif du fichier
 
@@ -18,11 +18,12 @@ Avant toute modification, toute IA ou développeur doit lire ce fichier pour com
 # Informations générales
 
 Nom du projet :
-Direct API
+Direk API
 
 Description :
 
-Plateforme API permettant aux resellers de recharger un solde (via Pay'm) puis d'utiliser une API intermédiaire pour vendre des services numériques (exemple : diamants Free Fire via FazerCards). Le fournisseur reste invisible au reseller.
+Plateforme B2B de recharge de jeux (Free Fire, etc.) pour resellers haïtiens.
+Les resellers rechargent un solde HTG via Pay'm, puis appellent une API pour déclencher des recharges jeux pour leurs clients. Le fournisseur FazerCards reste invisible au reseller.
 
 Architecture :
 
@@ -30,13 +31,13 @@ Frontend :
 HTML + Tailwind CSS CDN + petite-vue 0.4.1 (vanilla, pas de framework lourd)
 
 Backend :
-Node.js + Express.js — fichier `server.js` à la racine
+Node.js + Express.js — fichier `server.js` à la racine, port 3000
 
 Base de données :
 Supabase PostgreSQL (non encore connecté — Phase 2)
 
 Hébergement :
-Replit (port 3000, workflow "Direct API" → `node server.js`)
+Replit (workflow "Direct API" → `node server.js`)
 
 
 ---
@@ -50,15 +51,17 @@ NE JAMAIS :
 - changer l'architecture sans documentation
 - exposer une clé API côté frontend ou dans Git
 - permettre au frontend de modifier des données sensibles directement dans Supabase
+- stocker des montants en float — toujours des INTEGER (centimes HTG)
 
 
 Toujours :
 
 - lire `docs/SECURITY_RULES.md` avant toute modification backend
 - lire `docs/DATABASE_RULES.md` avant toute modification base de données
-- stocker les montants en INTEGER (centimes HTG, ex: 5000 = 50.00 HTG)
-- rendre toutes les opérations financières atomiques
+- lire `docs/WALLET_SECURITY.md` avant toute modification du wallet
+- tester avant modification
 - documenter chaque changement dans ce fichier
+- conserver la compatibilité avec les anciennes fonctions
 
 
 ---
@@ -68,7 +71,7 @@ Toujours :
 
 ## Étape actuelle :
 
-Phase 1 terminée — Intégration du design.
+Phase 1 terminée — Intégration du design (7 pages frontend + serveur Express).
 Prochaine étape : Phase 2 — Configuration Supabase (tables + RLS).
 
 
@@ -139,14 +142,32 @@ Prochaine étape : Phase 2 — Configuration Supabase (tables + RLS).
 | `/login` | `public/login.html` | Connexion / Inscription |
 | `/admin` | `public/admin.html` | Admin catalogue |
 
+## Routes API prévues
+
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| POST | `/api/v1/auth/register` | Créer un compte reseller |
+| POST | `/api/v1/auth/login` | Connexion reseller |
+| GET  | `/api/v1/dashboard` | Solde + stats du reseller connecté |
+| GET  | `/api/v1/transactions` | Historique transactions |
+| GET  | `/api/v1/products` | Liste produits actifs |
+| POST | `/api/v1/wallet/topup` | Initier recharge Pay'm |
+| POST | `/api/v1/wallet/verify` | Vérifier paiement Pay'm (polling) |
+| POST | `/api/v1/recharge` | Demander une recharge jeu (FazerCards) |
+| POST | `/api/v1/auth/regenerate-key` | Régénérer la clé API |
+
 
 ## Base de données
+
+
+Tables existantes :
+
 
 ### resellers
 
 Statut : Non créée
 
-Colonnes prévues :
+Colonnes :
 - id (uuid, PK)
 - nom (text)
 - email (text, unique)
@@ -160,7 +181,7 @@ Colonnes prévues :
 
 Statut : Non créée
 
-Colonnes prévues :
+Colonnes :
 - id (uuid, PK)
 - fournisseur (text) — ex: 'freefire'
 - nom (text) — ex: '100 Diamants'
@@ -174,7 +195,7 @@ Colonnes prévues :
 
 Statut : Non créée
 
-Colonnes prévues :
+Colonnes :
 - id (uuid, PK)
 - reseller_id (uuid, FK → resellers)
 - montant (integer) — centimes HTG
@@ -188,7 +209,7 @@ Colonnes prévues :
 
 Statut : Non créée
 
-Colonnes prévues :
+Colonnes :
 - id (uuid, PK)
 - reseller_id (uuid, FK → resellers)
 - produit_id (uuid, FK → produits)
@@ -204,25 +225,37 @@ Colonnes prévues :
 
 # Fonctions serveur existantes
 
-## Aucune encore créée
 
-Toutes les fonctions backend sont à créer en Phase 2 et Phase 3.
+## creer-reseller
 
-Fonctions prévues :
-- `POST /api/v1/auth/register` — creer-reseller
-- `POST /api/v1/auth/login` — connexion
-- `GET  /api/v1/products` — liste produits actifs
-- `POST /api/v1/wallet/topup` — initier recharge Pay'm
-- `POST /api/v1/wallet/verify` — vérifier paiement Pay'm (polling)
-- `POST /api/v1/recharge` — demander une recharge jeu
-- `POST /api/v1/auth/regenerate-key` — régénérer clé API
-- `GET  /api/v1/transactions` — historique transactions
-- `GET  /api/v1/dashboard` — solde + stats
+Statut : Non créée
+
+Version : —
+
+Description :
+Inscription reseller + génération clé API (affichée en clair une seule fois, puis stockée hashée bcrypt).
+
+Dernière modification : —
+
+Auteur : —
+
+IA utilisée : —
+
+
+---
+
+## demander-recharge
+
+Statut : Non créée
+
+Description :
+Fonction principale API — vérifie la clé API, vérifie le solde, débite, appelle FazerCards, rembourse automatiquement si échec.
 
 
 ---
 
 # Intégrations externes
+
 
 ## Pay'm (paiement wallet resellers)
 
@@ -233,16 +266,22 @@ Fonctions prévues :
 - Vérifier : `POST /api/paiement-verify`
   - Champs : `client_id`, `refference_id`
   - Réponse : `trans_status: "no"` (en attente) ou `"ok"` (confirmé)
-- ⚠️ PAS de webhook — système polling uniquement (appel à `/api/v1/wallet/verify` au retour de redirection ou par polling)
+- ⚠️ PAS de webhook — système polling uniquement
 - Variables : `PAYM_CLIENT_ID`, `PAYM_CLIENT_SECRET`
+
 
 ## FazerCards (fournisseur recharges jeux)
 
 - Base URL : `https://api.fzr.cards`
 - Auth : header `X-API-Key: fc_…`
 - Version : `/api/v2`
-- Endpoints utilisés : `GET /api/v2/topups/offers`, `POST /api/v2/topups/order`, `GET /api/v2/topups/validate-id`
+- Endpoints utilisés :
+  - `GET /api/v2/topups` — catalogue catégories
+  - `GET /api/v2/topups/offers` — liste des offres avec prix
+  - `POST /api/v2/topups/order` — créer une commande de recharge
+  - `GET /api/v2/topups/validate-id` — valider l'ID joueur avant commande
 - Variable : `FAZERCARDS_API_KEY`
+
 
 ## Variables d'environnement complètes
 
@@ -253,15 +292,16 @@ Fonctions prévues :
 | `PAYM_CLIENT_ID` | Identifiant marchand Pay'm |
 | `PAYM_CLIENT_SECRET` | Secret Pay'm |
 | `FAZERCARDS_API_KEY` | Clé API FazerCards (format `fc_…`) |
-| `ADMIN_SECRET` | Secret pour protéger les routes admin (`/admin`, `POST /api/v1/products`) |
-| `SESSION_SECRET` | Secret pour signer les sessions Express (déjà configuré dans Replit) |
+| `ADMIN_SECRET` | Secret pour protéger les routes admin |
+| `SESSION_SECRET` | Secret pour signer les sessions Express |
 
 
 ---
 
 # Dernières modifications
 
-## Date : 22/07/2026
+
+## Date : 23/07/2026
 
 ## Modification : Phase 1 — Intégration du design frontend
 
@@ -285,13 +325,13 @@ Fonctions prévues :
 - `/historique` : ✅ affiché correctement
 - `/recharge` : ✅ affiché correctement
 - `/api-doc` : ✅ affiché correctement
-- `/profil` : ✅ affiché correctement (navigué via lien)
+- `/profil` : ✅ affiché correctement
 - `/login` : ✅ affiché correctement
 - `/admin` : ✅ affiché correctement, toggle actif/inactif fonctionne avec petite-vue
 
 ## Problèmes restants :
-- Tailwind CDN affiche un warning "ne pas utiliser en prod" — normal pour l'instant, à remplacer par Tailwind CLI en Phase 3
-- Toutes les données sont statiques (hardcodées) — seront remplacées par les vraies données Supabase en Phase 3
+- Tailwind CDN affiche un warning "ne pas utiliser en prod" — normal pour l'instant
+- Toutes les données sont statiques (hardcodées) — seront remplacées en Phase 3
 
 
 ---
@@ -308,6 +348,7 @@ Fonctions prévues :
 
 # Décisions techniques
 
+
 ## 1. Pas de webhook Pay'm — polling
 
 Pay'm ne supporte pas les webhooks. La confirmation de paiement se fait par polling via `POST /api/paiement-verify`.
@@ -315,6 +356,7 @@ Pay'm ne supporte pas les webhooks. La confirmation de paiement se fait par poll
 Raison : limitation de l'API Pay'm.
 
 Date décision : 22/07/2026
+
 
 ## 2. Montants en INTEGER (centimes)
 
@@ -324,6 +366,7 @@ Raison : éviter les erreurs d'arrondi sur les opérations financières.
 
 Date décision : 22/07/2026
 
+
 ## 3. Clés API resellers hashées (bcrypt)
 
 La clé API est générée aléatoirement, hashée avec bcrypt, et stockée hashée. Elle n'est affichée en clair qu'à la création ou régénération.
@@ -332,6 +375,7 @@ Raison : sécurité — même un accès à la base de données ne révèle pas l
 
 Date décision : 22/07/2026
 
+
 ## 4. Préfixe clé API : dk_live_
 
 Format visible côté reseller : `dk_live_XXXXXXXXXX...`
@@ -339,6 +383,7 @@ Format visible côté reseller : `dk_live_XXXXXXXXXX...`
 Raison : cohérence avec le design et identification rapide des clés.
 
 Date décision : 22/07/2026
+
 
 ## 5. Frontend non fiable — tout passe par le serveur
 
@@ -353,6 +398,7 @@ Date décision : 22/07/2026
 
 # Instructions pour la prochaine IA
 
+
 Avant de coder :
 
 1. Lire `docs/SECURITY_RULES.md`
@@ -363,15 +409,16 @@ Avant de coder :
 6. Ne pas recréer une fonctionnalité déjà existante
 7. Ne pas changer le design des pages HTML
 
+
 Après modification :
 
 Mettre à jour ce fichier avec :
+
 - ce qui a été changé
 - les fichiers modifiés
 - les tests effectués
 - les problèmes restants
 - les nouvelles décisions techniques
 
-Avant toute action, analyser ce fichier et la structure actuelle. Ne pas recommencer une fonctionnalité existante. Mettre à jour PROJECT_MEMORY.md après chaque modification importante.
 
 FIN DU DOCUMENT
