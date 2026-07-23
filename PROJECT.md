@@ -99,8 +99,31 @@ Stack prévu :
 
 ---
 
+## Intégrations externes — détails techniques
+
+### Pay'm (plopplop.solutionip.app) — Paiement wallet
+- Base URL : `https://plopplop.solutionip.app/`
+- Créer paiement : `POST /api/paiement-marchand` → champs : `client_id`, `refference_id` (typo dans leur API), `montant` (HTG, >= 20), `payment_method` (moncash/kashpaw/natcash/all)
+- Réponse : `{ status, message, url, transaction_id }` — rediriger le reseller vers `url`
+- Vérifier statut : `POST /api/paiement-verify` → champs : `client_id`, `refference_id` → `trans_status: "no"` (en attente) ou `"ok"` (confirmé)
+- ⚠️ **PAS DE WEBHOOK** — Pay'm n'envoie pas de notification push. Il faut vérifier le statut par polling ou à la redirection de retour.
+- Variables nécessaires : `PAYM_CLIENT_ID`, `PAYM_CLIENT_SECRET`
+
+### FazerCards (api.fzr.cards) — Fournisseur recharges jeux
+- Base URL : `https://api.fzr.cards`
+- Version API : `/api/v2`
+- Auth : header `X-API-Key: fc_…`
+- Endpoints clés pour nous :
+  - `GET /api/v2/topups` — catalogue catégories (Free Fire, etc.)
+  - `GET /api/v2/topups/offers` — liste des offres/produits avec prix
+  - `POST /api/v2/topups/order` — créer une commande de recharge
+  - `GET /api/v2/topups/validate-id` — valider l'ID joueur avant commande
+- Suivi commandes : section `/api/v2/orders/{id}`
+- Réponses : `{ ok, … }`
+- Variable nécessaire : `FAZERCARDS_API_KEY`
+
 ## Problèmes / limitations connus
-- L'API Pay'm (paymplopplop.com) est peu documentée publiquement — il faudra que l'utilisateur fournisse la doc ou les endpoints exacts.
-- Le fournisseur de recharges Free Fire n'est pas encore identifié — idem, doc à fournir.
-- Les soldes sont stockés en **centimes** (entiers) pour éviter tout problème d'arrondi flottant.
-- La clé API des resellers doit être hashée (bcrypt ou SHA-256) en base — elle n'est affichée en clair qu'une seule fois à la création.
+- ⚠️ **Pay'm sans webhook** : l'étape 4 prévue comme "webhook-paym" devient une route de vérification `POST /api/v1/verify-payment` appelée soit au retour de redirection Pay'm, soit par polling. Logique idempotente requise (même référence = une seule fois).
+- Les soldes sont stockés en **centimes HTG** (entiers) pour éviter tout problème d'arrondi flottant.
+- La clé API des resellers est hashée (bcrypt) en base — affichée en clair uniquement à la création ou régénération.
+- Le champ `refference_id` dans l'API Pay'm contient une faute de frappe (double f) — à respecter exactement.
