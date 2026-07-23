@@ -1,0 +1,1 @@
+- [Architecture multi-service](architecture.md) — provider pattern, tables v2, endpoints, warning sessions autoscale

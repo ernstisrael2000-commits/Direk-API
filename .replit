@@ -5,6 +5,10 @@ channel = "stable-25_05"
 [agent]
 expertMode = true
 
+[deployment]
+run = "node server.js"
+deploymentTarget = "cloudrun"
+
 [workflows]
 runButton = "Project"
 

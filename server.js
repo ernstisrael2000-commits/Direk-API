@@ -46,19 +46,23 @@ const rechargeLimiter = rateLimit({
 app.use('/api/', generalLimiter);
 
 // ─── Routes API ───────────────────────────────────────────────────────────────
-const authRoutes        = require('./routes/auth');
-const dashboardRoutes   = require('./routes/dashboard');
+const authRoutes         = require('./routes/auth');
+const dashboardRoutes    = require('./routes/dashboard');
 const transactionsRoutes = require('./routes/transactions');
-const walletRoutes      = require('./routes/wallet');
-const rechargeRoutes    = require('./routes/recharge');
-const productsRoutes    = require('./routes/products');
-const adminRoutes       = require('./routes/admin');
+const walletRoutes       = require('./routes/wallet');
+const rechargeRoutes     = require('./routes/recharge');   // compat legacy
+const productsRoutes     = require('./routes/products');
+const servicesRoutes     = require('./routes/services');
+const ordersRoutes       = require('./routes/orders');
+const adminRoutes        = require('./routes/admin');
 
 app.use('/api/v1/auth',         authLimiter, authRoutes);
 app.use('/api/v1/dashboard',    dashboardRoutes);
 app.use('/api/v1/transactions', transactionsRoutes);
 app.use('/api/v1/wallet',       walletRoutes);
-app.use('/api/v1/recharge',     rechargeLimiter, rechargeRoutes);
+app.use('/api/v1/services',     servicesRoutes);
+app.use('/api/v1/orders',       rechargeLimiter, ordersRoutes);
+app.use('/api/v1/recharge',     rechargeLimiter, rechargeRoutes);  // conservé pour compat
 app.use('/api/v1/products',     productsRoutes);
 app.use('/api/v1/admin',        adminRoutes);
 
