@@ -25,7 +25,7 @@ Stack prévu :
 ---
 
 ## État actuel
-- [ ] Aucune étape réalisée — phase de planification terminée, prêt à coder
+- [x] **Phase 1 terminée** — 7 pages frontend intégrées, serveur Express opérationnel
 
 ## Décisions techniques confirmées
 - **Backend** : Node.js + Express.js (TypeScript) sur Replit
@@ -101,6 +101,23 @@ Stack prévu :
 6. **ÉTAPE 5** — Edge Function `demander-recharge` (cœur de l'API, rate limiting, remboursement auto)
 7. **ÉTAPE 6** — Edge Function `regenerer-cle-api`
 8. **ÉTAPE 7** — Branchement tableau de bord (solde, historique, clé API, bouton recharger)
+
+---
+
+## Structure technique réelle
+
+### Fichiers créés
+| Fichier | Rôle |
+|---------|------|
+| `server.js` | Serveur Express — sert les pages statiques sur port 3000 |
+| `public/index.html` | Dashboard (page 1 du design) |
+| `public/historique.html` | Historique transactions (page 2) |
+| `public/recharge.html` | Recharge wallet (page 3) |
+| `public/api-doc.html` | Documentation API (page 4) |
+| `public/profil.html` | Profil & Réglages (page 5) |
+| `public/login.html` | Connexion / Inscription (nouvelle) |
+| `public/admin.html` | Admin catalogue produits (nouvelle) |
+| `docs/` | Règles techniques du projet (6 fichiers) |
 
 ---
 

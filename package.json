@@ -1,0 +1,13 @@
+{
+  "name": "direct-api",
+  "version": "1.0.0",
+  "description": "Direct API — Plateforme de recharge de jeux pour resellers",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.22.2"
+  }
+}
