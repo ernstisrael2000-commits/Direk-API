@@ -1,17 +1,205 @@
-<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Direct API — Profil</title><script src="https://cdn.tailwindcss.com"></script><script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script><link href="https://api.fontshare.com/v2/css?f[]=satoshi@700,500,400&f[]=clash-grotesk@600&display=swap" rel="stylesheet"><style>body { font-family: 'Satoshi', sans-serif; -webkit-tap-highlight-color: transparent; } h1, h2, h3 { font-family: 'Clash Grotesk', sans-serif; }</style>
-<meta name="view-transition" content="same-origin">
-<script src="https://cdn.jsdelivr.net/npm/petite-vue@0.4.1/dist/petite-vue.iife.js" defer init></script>
-</head><body><div class="w-full h-screen flex flex-col bg-[#F8FAFC]">
-<header class="shrink-0 pt-14 px-6 flex items-center justify-between bg-white pb-4 shadow-sm"><div class="flex items-center gap-3"><a href="/" id="back-to-dashboard-link" class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-900 border border-slate-100"><iconify-icon icon="lucide:chevron-left" class="text-xl"></iconify-icon></a><h1 class="text-xl font-semibold text-slate-900">Profil &amp; Réglages</h1></div><button id="header-notif-btn" class="relative w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-600 border border-slate-100"><iconify-icon icon="lucide:bell" class="text-xl"></iconify-icon><span class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span></button></header>
-<main class="flex-1 overflow-y-auto px-6 py-6 space-y-8"><div class="flex flex-col items-center gap-4 py-2"><div class="relative"><div class="w-24 h-24 rounded-[32px] bg-gradient-to-tr from-[#3B82F6] to-[#7C3AED] p-1 shadow-lg"><div class="w-full h-full rounded-[28px] bg-white flex items-center justify-center overflow-hidden"><iconify-icon icon="lucide:user" class="text-4xl text-slate-300"></iconify-icon></div></div><button id="edit-avatar-btn" class="absolute bottom-0 right-0 w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center text-white border-4 border-white shadow-md"><iconify-icon icon="lucide:camera" class="text-xs"></iconify-icon></button></div><div class="text-center"><h2 class="text-xl font-bold text-slate-900">Elite Reseller</h2><p class="text-sm text-slate-500 font-medium">reseller@directapi.ht</p></div><div class="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-100"><iconify-icon icon="lucide:award" class="text-sm"></iconify-icon><span class="text-[11px] font-bold uppercase tracking-wider">Compte Premium</span></div></div><div class="space-y-4"><h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Informations du compte</h3><div class="space-y-3"><div class="flex flex-col gap-1"><label class="text-xs font-bold text-slate-500 ml-1">Nom Complet</label><input type="text" value="Jean Reseller" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"></div><div class="flex flex-col gap-1"><label class="text-xs font-bold text-slate-500 ml-1">Téléphone</label><input type="text" value="+509 3XXX-XXXX" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"></div></div></div><div class="space-y-4"><h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Sécurité</h3><div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"><div class="flex items-center justify-between p-4 border-b border-slate-50"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600"><iconify-icon icon="lucide:shield-check" class="text-xl"></iconify-icon></div><div><p class="text-sm font-bold text-slate-900">Auth à deux facteurs</p><p class="text-[11px] text-slate-400">Sécurisez vos retraits</p></div></div><div class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="2fa-toggle" class="sr-only peer" checked><div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div></div></div><div class="p-4 flex items-center justify-between"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600"><iconify-icon icon="lucide:key-round" class="text-xl"></iconify-icon></div><div><p class="text-sm font-bold text-slate-900">Mot de passe</p><p class="text-[11px] text-slate-400">Modifié il y a 2 mois</p></div></div><button class="text-xs font-bold text-blue-600">Changer</button></div></div></div><div class="space-y-4"><h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Développeur</h3><div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4"><div class="flex items-center justify-between"><div class="flex flex-col gap-1"><span class="text-[10px] text-slate-400 font-bold uppercase">Clé API Actuelle</span><code class="text-xs font-mono text-slate-700">dk_live_98h2...5a2z</code></div><button class="p-2 bg-slate-50 text-slate-600 rounded-lg"><iconify-icon icon="lucide:copy"></iconify-icon></button></div><button class="w-full py-3 bg-slate-900 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors"><iconify-icon icon="lucide:refresh-cw" class="text-lg"></iconify-icon> Régénérer la Clé API</button></div></div><div class="pt-4 pb-2"><button class="w-full py-4 bg-red-50 text-red-600 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 border border-red-100 hover:bg-red-100 transition-colors"><iconify-icon icon="lucide:log-out" class="text-xl"></iconify-icon> Déconnexion du compte </button></div><p class="text-center text-[10px] text-slate-400 font-medium pb-4">v1.0.0 • © 2025 Direct API Haiti</p></main>
-<div v-scope="{ ...{&quot;activeItem&quot;:&quot;profile&quot;,&quot;homeHref&quot;:&quot;/&quot;,&quot;historyHref&quot;:&quot;/historique&quot;,&quot;apiHref&quot;:&quot;/api-doc&quot;,&quot;profileHref&quot;:&quot;/profil&quot;}, $emit() {} }">
-<footer class="shrink-0 pb-[34px] px-6 py-4 bg-white border-t border-slate-100">
-  <nav class="flex items-center justify-around">
-    <a :href="homeHref" :class="{ 'text-blue-600 font-bold': activeItem === 'home', 'text-slate-400 font-medium': activeItem !== 'home' }" class="flex flex-col items-center gap-1 text-xs"><iconify-icon icon="lucide:layout-grid" class="text-2xl"></iconify-icon><span>Home</span></a>
-    <a :href="historyHref" :class="{ 'text-blue-600 font-bold': activeItem === 'history', 'text-slate-400 font-medium': activeItem !== 'history' }" class="flex flex-col items-center gap-1 text-xs"><iconify-icon icon="lucide:history" class="text-2xl"></iconify-icon><span>Historique</span></a>
-    <a :href="apiHref" :class="{ 'text-blue-600 font-bold': activeItem === 'api', 'text-slate-400 font-medium': activeItem !== 'api' }" class="flex flex-col items-center gap-1 text-xs"><iconify-icon icon="lucide:code-2" class="text-2xl"></iconify-icon><span>API Doc</span></a>
-    <a :href="profileHref" :class="{ 'text-blue-600 font-bold': activeItem === 'profile', 'text-slate-400 font-medium': activeItem !== 'profile' }" class="flex flex-col items-center gap-1 text-xs"><iconify-icon icon="lucide:settings" class="text-2xl"></iconify-icon><span>Profil</span></a>
-  </nav>
-</footer>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Direk API — Profil</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@700,500,400&f[]=clash-grotesk@600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Satoshi', sans-serif; -webkit-tap-highlight-color: transparent; }
+    h1, h2, h3 { font-family: 'Clash Grotesk', sans-serif; }
+    .animate-spin { animation: spin 1s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+    .animate-pulse { animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: .4 } }
+  </style>
+  <meta name="view-transition" content="same-origin">
+  <script src="https://cdn.jsdelivr.net/npm/petite-vue@0.4.1/dist/petite-vue.iife.js" defer init></script>
+</head>
+<body>
+<div v-scope="{
+  nom: '—', email: '—', balance_htg: '0.00', status: 'actif',
+  apiKeyPreview: 'dk_live_••••••••••••••••••••••',
+  newApiKey: null,
+  loading: true, regenLoading: false, copyOk: false, showNewKey: false,
+  confirmRegen: false,
+  async init() {
+    try {
+      const r = await fetch('/api/v1/dashboard');
+      if (r.status === 401) { window.location.href = '/login'; return; }
+      const d = await r.json();
+      if (d.ok) {
+        this.nom = d.reseller.nom;
+        this.email = d.reseller.email;
+        this.balance_htg = parseFloat(d.reseller.balance_htg).toLocaleString('fr', { minimumFractionDigits: 2 });
+        this.status = d.reseller.status;
+        this.apiKeyPreview = d.reseller.apiKeyPreview;
+      }
+    } catch(e) {}
+    this.loading = false;
+  },
+  async copyKey(key) {
+    try { await navigator.clipboard.writeText(key); this.copyOk = true; setTimeout(() => { this.copyOk = false }, 2000); } catch(e) {}
+  },
+  async regenKey() {
+    this.confirmRegen = false; this.regenLoading = true; this.newApiKey = null;
+    try {
+      const r = await fetch('/api/v1/auth/regenerate-key', { method: 'POST' });
+      const d = await r.json();
+      if (d.ok) { this.newApiKey = d.apiKey; this.showNewKey = true; }
+    } catch(e) {}
+    this.regenLoading = false;
+  },
+  async logout() {
+    await fetch('/api/v1/auth/logout', { method: 'POST' });
+    window.location.href = '/login';
+  }
+}" @vue:mounted="init()" class="w-full h-screen flex flex-col bg-[#F8FAFC]">
+
+  <!-- Header -->
+  <header class="shrink-0 pt-14 px-6 flex items-center justify-between bg-white pb-4 shadow-sm">
+    <div class="flex items-center gap-3">
+      <a href="/" class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-900 border border-slate-100">
+        <iconify-icon icon="lucide:chevron-left" class="text-xl"></iconify-icon>
+      </a>
+      <h1 class="text-xl font-semibold text-slate-900">Profil &amp; Réglages</h1>
+    </div>
+  </header>
+
+  <main class="flex-1 overflow-y-auto px-6 py-6 space-y-8">
+
+    <!-- Avatar + nom -->
+    <div class="flex flex-col items-center gap-4 py-2">
+      <div class="w-24 h-24 rounded-[32px] bg-gradient-to-tr from-[#3B82F6] to-[#7C3AED] p-1 shadow-lg">
+        <div class="w-full h-full rounded-[28px] bg-white flex items-center justify-center overflow-hidden">
+          <iconify-icon icon="lucide:user" class="text-4xl text-slate-300"></iconify-icon>
+        </div>
+      </div>
+      <div class="text-center">
+        <h2 class="text-xl font-bold text-slate-900">
+          <span v-if="loading" class="inline-block w-32 h-5 bg-slate-100 rounded animate-pulse"></span>
+          <span v-else>{{ nom }}</span>
+        </h2>
+        <p class="text-sm text-slate-500 font-medium">
+          <span v-if="loading" class="inline-block w-44 h-4 bg-slate-100 rounded animate-pulse mt-1"></span>
+          <span v-else>{{ email }}</span>
+        </p>
+      </div>
+      <div class="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-100">
+        <iconify-icon icon="lucide:award" class="text-sm"></iconify-icon>
+        <span class="text-[11px] font-bold uppercase tracking-wider">Compte Actif</span>
+      </div>
+    </div>
+
+    <!-- Infos compte -->
+    <div class="space-y-4">
+      <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Informations du compte</h3>
+      <div class="space-y-3">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-bold text-slate-500 ml-1">Nom Complet</label>
+          <input type="text" :value="nom" readonly
+            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 outline-none">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-bold text-slate-500 ml-1">Email</label>
+          <input type="text" :value="email" readonly
+            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 outline-none">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-bold text-slate-500 ml-1">Solde</label>
+          <div class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 font-bold">
+            {{ balance_htg }} HTG
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Clé API -->
+    <div class="space-y-4">
+      <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Développeur</h3>
+      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
+
+        <!-- Clé actuelle (masquée) -->
+        <div v-if="!showNewKey">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex flex-col gap-1">
+              <span class="text-[10px] text-slate-400 font-bold uppercase">Clé API Actuelle</span>
+              <code class="text-xs font-mono text-slate-700">{{ apiKeyPreview }}</code>
+            </div>
+            <button @click="copyKey(apiKeyPreview)" class="p-2 bg-slate-50 text-slate-600 rounded-lg">
+              <iconify-icon :icon="copyOk ? 'lucide:check' : 'lucide:copy'"></iconify-icon>
+            </button>
+          </div>
+          <!-- Confirmation régénération -->
+          <div v-if="!confirmRegen">
+            <button @click="confirmRegen = true" :disabled="regenLoading"
+              class="w-full py-3 bg-slate-900 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors">
+              <iconify-icon :icon="regenLoading ? 'lucide:loader-2' : 'lucide:refresh-cw'" :class="regenLoading ? 'animate-spin' : ''" class="text-lg"></iconify-icon>
+              {{ regenLoading ? 'Régénération…' : 'Régénérer la Clé API' }}
+            </button>
+          </div>
+          <div v-else class="space-y-2">
+            <p class="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 font-medium">
+              ⚠️ L'ancienne clé sera immédiatement invalidée. Tous vos scripts devront être mis à jour.
+            </p>
+            <div class="flex gap-2">
+              <button @click="regenKey" class="flex-1 py-3 bg-slate-900 text-white rounded-xl text-sm font-bold">Confirmer</button>
+              <button @click="confirmRegen = false" class="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold">Annuler</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Nouvelle clé affichée après régénération -->
+        <div v-else class="space-y-3">
+          <div class="flex items-center gap-2 text-emerald-600 mb-1">
+            <iconify-icon icon="lucide:check-circle-2" class="text-xl"></iconify-icon>
+            <span class="text-sm font-bold">Nouvelle clé générée</span>
+          </div>
+          <p class="text-xs text-slate-500">Copiez-la maintenant — elle ne sera plus visible après.</p>
+          <div class="bg-slate-900 rounded-xl p-4">
+            <code class="text-sm font-mono text-emerald-400 break-all leading-relaxed">{{ newApiKey }}</code>
+          </div>
+          <div class="flex gap-2">
+            <button @click="copyKey(newApiKey)"
+              class="flex-1 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 flex items-center justify-center gap-2">
+              <iconify-icon :icon="copyOk ? 'lucide:check' : 'lucide:copy'"></iconify-icon>
+              {{ copyOk ? 'Copié !' : 'Copier' }}
+            </button>
+            <button @click="showNewKey = false; newApiKey = null"
+              class="flex-1 py-3 bg-emerald-600 text-white rounded-xl text-sm font-bold">
+              OK
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Déconnexion -->
+    <div class="pt-4 pb-2">
+      <button @click="logout"
+        class="w-full py-4 bg-red-50 text-red-600 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 border border-red-100 hover:bg-red-100 transition-colors active:scale-95">
+        <iconify-icon icon="lucide:log-out" class="text-xl"></iconify-icon>
+        Déconnexion du compte
+      </button>
+    </div>
+
+    <p class="text-center text-[10px] text-slate-400 font-medium pb-4">v1.0.0 • © 2025 Direk API Haiti</p>
+
+  </main>
+
+  <!-- Bottom nav -->
+  <footer class="shrink-0 pb-[34px] px-6 py-4 bg-white border-t border-slate-100">
+    <nav class="flex items-center justify-around">
+      <a href="/"           class="flex flex-col items-center gap-1 text-xs text-slate-400 font-medium"><iconify-icon icon="lucide:layout-grid" class="text-2xl"></iconify-icon><span>Home</span></a>
+      <a href="/historique" class="flex flex-col items-center gap-1 text-xs text-slate-400 font-medium"><iconify-icon icon="lucide:history" class="text-2xl"></iconify-icon><span>Historique</span></a>
+      <a href="/api-doc"    class="flex flex-col items-center gap-1 text-xs text-slate-400 font-medium"><iconify-icon icon="lucide:code-2" class="text-2xl"></iconify-icon><span>API Doc</span></a>
+      <a href="/profil"     class="flex flex-col items-center gap-1 text-xs text-blue-600 font-bold"><iconify-icon icon="lucide:settings" class="text-2xl"></iconify-icon><span>Profil</span></a>
+    </nav>
+  </footer>
+
 </div>
-</div></body></html>
+</body>
+</html>

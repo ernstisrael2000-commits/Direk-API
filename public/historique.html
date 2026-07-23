@@ -1,19 +1,173 @@
-<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Direct API — Historique</title><script src="https://cdn.tailwindcss.com"></script><script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script><link href="https://api.fontshare.com/v2/css?f[]=satoshi@700,500,400&f[]=clash-grotesk@600&display=swap" rel="stylesheet"><style>body { font-family: 'Satoshi', sans-serif; -webkit-tap-highlight-color: transparent; } h1, h2, h3 { font-family: 'Clash Grotesk', sans-serif; } .no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }</style>
-<meta name="view-transition" content="same-origin">
-<script src="https://cdn.jsdelivr.net/npm/petite-vue@0.4.1/dist/petite-vue.iife.js" defer init></script>
-</head><body><div class="w-full h-screen flex flex-col bg-[#F8FAFC]">
-<div v-scope="{ ...{&quot;profileHref&quot;:&quot;/profil&quot;,&quot;isOnline&quot;:true}, $emit() {} }">
-<header class="shrink-0 pt-14 px-6 flex items-center justify-between bg-white pb-4"><div class="flex flex-col"> <span class="text-gray-400 text-xs font-medium uppercase tracking-wider">Bienvenue chez Direct</span><h1 class="text-xl font-semibold text-slate-900">Elite Reseller</h1></div><div class="relative"><a :href="profileHref" class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 border border-slate-200"> <iconify-icon icon="lucide:user" class="text-xl"></iconify-icon> </a> <span v-if="isOnline" class="absolute top-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></span></div></header>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Direk API — Historique</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@700,500,400&f[]=clash-grotesk@600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Satoshi', sans-serif; -webkit-tap-highlight-color: transparent; }
+    h1, h2, h3 { font-family: 'Clash Grotesk', sans-serif; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .animate-pulse { animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: .4 } }
+  </style>
+  <meta name="view-transition" content="same-origin">
+  <script src="https://cdn.jsdelivr.net/npm/petite-vue@0.4.1/dist/petite-vue.iife.js" defer init></script>
+</head>
+<body>
+<div v-scope="{
+  transactions: [],
+  filtered: [],
+  loading: true,
+  activeFilter: 'tous',
+  async init() {
+    try {
+      const r = await fetch('/api/v1/transactions');
+      if (r.status === 401) { window.location.href = '/login'; return; }
+      const d = await r.json();
+      if (d.ok) {
+        this.transactions = d.transactions;
+        this.filtered = d.transactions;
+      }
+    } catch(e) {}
+    this.loading = false;
+  },
+  setFilter(f) {
+    this.activeFilter = f;
+    if (f === 'tous')     this.filtered = this.transactions;
+    else if (f === 'succes')   this.filtered = this.transactions.filter(t => t.status === 'confirmed' || t.status === 'success');
+    else if (f === 'recharges') this.filtered = this.transactions.filter(t => t.type === 'wallet');
+    else if (f === 'echecs')   this.filtered = this.transactions.filter(t => t.status === 'failed' || t.status === 'refunded' || t.status === 'expired');
+  },
+  groupByDate(txs) {
+    const groups = {};
+    txs.forEach(tx => {
+      const d = new Date(tx.created_at);
+      const key = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(tx);
+    });
+    return Object.entries(groups);
+  },
+  txIcon(tx) {
+    if (tx.type === 'wallet') return 'lucide:plus-circle';
+    return 'lucide:gamepad-2';
+  },
+  txIconBg(tx) {
+    if (tx.type === 'wallet') return 'bg-emerald-50 text-emerald-500';
+    if (tx.status === 'failed' || tx.status === 'refunded') return 'bg-red-50 text-red-500';
+    return 'bg-orange-50 text-orange-500';
+  },
+  txAmount(tx) {
+    const v = parseFloat(tx.montant_htg).toLocaleString('fr');
+    return tx.signe + ' ' + v + ' HTG';
+  },
+  txAmountClass(tx) {
+    if (tx.type === 'wallet') return 'text-emerald-600 font-bold';
+    if (tx.status === 'failed' || tx.status === 'refunded') return 'text-slate-400 line-through';
+    return 'text-slate-900 font-bold';
+  },
+  txBadge(tx) {
+    const m = { confirmed: 'PAYÉ', success: 'SUCCÈS', failed: 'ÉCHOUÉ', refunded: 'REMBOURSÉ', pending: 'EN ATTENTE', expired: 'EXPIRÉ' };
+    return m[tx.status] || tx.status.toUpperCase();
+  },
+  txBadgeClass(tx) {
+    if (tx.status === 'confirmed' || tx.status === 'success') return 'text-emerald-600 bg-emerald-50';
+    if (tx.status === 'failed' || tx.status === 'refunded' || tx.status === 'expired') return 'text-red-500 bg-red-50';
+    return 'text-slate-400 bg-slate-50';
+  },
+  txSub(tx) {
+    if (tx.type === 'wallet') return tx.reference || '';
+    return tx.joueur_id ? 'ID: ' + tx.joueur_id : '';
+  },
+  formatTime(iso) {
+    return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  }
+}" @vue:mounted="init()" class="w-full h-screen flex flex-col bg-[#F8FAFC]">
+
+  <!-- Header -->
+  <header class="shrink-0 pt-14 px-6 flex items-center justify-between bg-white pb-4">
+    <div class="flex flex-col">
+      <span class="text-gray-400 text-xs font-medium uppercase tracking-wider">Direk API</span>
+      <h1 class="text-xl font-semibold text-slate-900">Historique</h1>
+    </div>
+  </header>
+
+  <main class="flex-1 overflow-y-auto px-6 pt-2 pb-6 space-y-4">
+
+    <!-- Filtres -->
+    <div class="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 no-scrollbar">
+      <button @click="setFilter('tous')"
+        :class="activeFilter === 'tous' ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'bg-white border border-slate-200 text-slate-500'"
+        class="shrink-0 px-4 py-2 text-xs font-bold rounded-full transition-colors">Tous</button>
+      <button @click="setFilter('succes')"
+        :class="activeFilter === 'succes' ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'bg-white border border-slate-200 text-slate-500'"
+        class="shrink-0 px-4 py-2 text-xs font-medium rounded-full transition-colors">Succès</button>
+      <button @click="setFilter('recharges')"
+        :class="activeFilter === 'recharges' ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'bg-white border border-slate-200 text-slate-500'"
+        class="shrink-0 px-4 py-2 text-xs font-medium rounded-full transition-colors">Recharges</button>
+      <button @click="setFilter('echecs')"
+        :class="activeFilter === 'echecs' ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'bg-white border border-slate-200 text-slate-500'"
+        class="shrink-0 px-4 py-2 text-xs font-medium rounded-full transition-colors">Échecs</button>
+    </div>
+
+    <!-- Skeleton -->
+    <div v-if="loading" class="space-y-6">
+      <div v-for="i in 2" :key="i" class="space-y-3">
+        <div class="h-3 w-32 bg-slate-100 rounded animate-pulse"></div>
+        <div v-for="j in 3" :key="j" class="h-16 bg-slate-100 rounded-2xl animate-pulse"></div>
+      </div>
+    </div>
+
+    <!-- Vide -->
+    <div v-else-if="filtered.length === 0" class="flex flex-col items-center justify-center py-16 text-slate-400">
+      <iconify-icon icon="lucide:inbox" class="text-5xl mb-3"></iconify-icon>
+      <p class="text-sm font-medium">Aucune transaction</p>
+    </div>
+
+    <!-- Groupes par date -->
+    <div v-else class="space-y-6">
+      <div v-for="[date, txs] in groupByDate(filtered)" :key="date" class="space-y-3">
+        <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] capitalize">{{ date }}</h3>
+        <div class="space-y-3">
+          <div v-for="tx in txs" :key="tx.id"
+            class="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+            <div class="flex items-center gap-4">
+              <div :class="txIconBg(tx)" class="w-10 h-10 rounded-full flex items-center justify-center">
+                <iconify-icon :icon="txIcon(tx)" class="text-xl"></iconify-icon>
+              </div>
+              <div class="flex flex-col">
+                <span class="text-sm font-bold text-slate-900">{{ tx.label }}</span>
+                <span class="text-[10px] text-slate-400 font-medium">{{ txSub(tx) }} • {{ formatTime(tx.created_at) }}</span>
+              </div>
+            </div>
+            <div class="text-right">
+              <span :class="txAmountClass(tx)" class="text-sm">{{ txAmount(tx) }}</span>
+              <div class="mt-0.5 flex items-center justify-end">
+                <span :class="txBadgeClass(tx)" class="text-[10px] font-bold px-1.5 py-0.5 rounded">{{ txBadge(tx) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Bottom nav -->
+  <footer class="shrink-0 pb-[34px] px-6 py-4 bg-white border-t border-slate-100">
+    <nav class="flex items-center justify-around">
+      <a href="/"           class="flex flex-col items-center gap-1 text-xs text-slate-400 font-medium"><iconify-icon icon="lucide:layout-grid" class="text-2xl"></iconify-icon><span>Home</span></a>
+      <a href="/historique" class="flex flex-col items-center gap-1 text-xs text-blue-600 font-bold"><iconify-icon icon="lucide:history" class="text-2xl"></iconify-icon><span>Historique</span></a>
+      <a href="/api-doc"    class="flex flex-col items-center gap-1 text-xs text-slate-400 font-medium"><iconify-icon icon="lucide:code-2" class="text-2xl"></iconify-icon><span>API Doc</span></a>
+      <a href="/profil"     class="flex flex-col items-center gap-1 text-xs text-slate-400 font-medium"><iconify-icon icon="lucide:settings" class="text-2xl"></iconify-icon><span>Profil</span></a>
+    </nav>
+  </footer>
+
 </div>
-<main class="flex-1 overflow-y-auto px-6 pt-2 pb-6 space-y-6"><div class="flex items-center justify-between mb-2"><h2 class="text-xl font-bold text-slate-900">Historique</h2><div class="flex items-center gap-2"><button id="filter-toggle-btn" class="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded-xl text-slate-600 shadow-sm"> <iconify-icon icon="lucide:sliders-horizontal" class="text-xl"></iconify-icon> </button><button id="search-toggle-btn" class="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded-xl text-slate-600 shadow-sm"> <iconify-icon icon="lucide:search" class="text-xl"></iconify-icon> </button></div></div><div class="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 no-scrollbar"><button class="shrink-0 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-full shadow-md shadow-blue-200">Tous</button><button class="shrink-0 px-4 py-2 bg-white border border-slate-200 text-slate-500 text-xs font-medium rounded-full">Succès</button><button class="shrink-0 px-4 py-2 bg-white border border-slate-200 text-slate-500 text-xs font-medium rounded-full">Recharges</button><button class="shrink-0 px-4 py-2 bg-white border border-slate-200 text-slate-500 text-xs font-medium rounded-full">Échecs</button></div><div class="space-y-6"><div class="space-y-3"><h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em]">Aujourd'hui, 24 Mai</h3><div class="space-y-3"><div class="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm"><div class="flex items-center gap-4"><div class="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-orange-500"><iconify-icon icon="lucide:gamepad-2" class="text-xl"></iconify-icon></div><div class="flex flex-col"><span class="text-sm font-bold text-slate-900">Free Fire 100D</span><span class="text-[10px] text-slate-400 font-medium">ID: 29384812 • 14:20</span></div></div><div class="text-right"><span class="text-sm font-bold text-slate-900">- 150 HTG</span><div class="mt-0.5 flex items-center justify-end gap-1"><span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">SUCCÈS</span></div></div></div><div class="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm"><div class="flex items-center gap-4"><div class="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-orange-500"><iconify-icon icon="lucide:gamepad-2" class="text-xl"></iconify-icon></div><div class="flex flex-col"><span class="text-sm font-bold text-slate-900">Free Fire 210D</span><span class="text-[10px] text-slate-400 font-medium">ID: 29384815 • 13:45</span></div></div><div class="text-right"><span class="text-sm font-bold text-slate-900">- 300 HTG</span><div class="mt-0.5 flex items-center justify-end gap-1"><span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">SUCCÈS</span></div></div></div><div class="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm"><div class="flex items-center gap-4"><div class="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500"><iconify-icon icon="lucide:plus-circle" class="text-xl"></iconify-icon></div><div class="flex flex-col"><span class="text-sm font-bold text-slate-900">Recharge MonCash</span><span class="text-[10px] text-slate-400 font-medium">ID: MC-29183 • 12:05</span></div></div><div class="text-right"><span class="text-sm font-bold text-emerald-600">+ 5,000 HTG</span><div class="mt-0.5 flex items-center justify-end gap-1"><span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">PAYÉ</span></div></div></div></div></div><div class="space-y-3"><h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em]">Hier, 23 Mai</h3><div class="space-y-3"><div class="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm"><div class="flex items-center gap-4"><div class="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-500"><iconify-icon icon="lucide:gamepad-2" class="text-xl"></iconify-icon></div><div class="flex flex-col"><span class="text-sm font-bold text-slate-900">Free Fire 500D</span><span class="text-[10px] text-slate-400 font-medium">ID: 10928374 • 10:45</span></div></div><div class="text-right"><span class="text-sm font-bold text-slate-400 line-through">- 650 HTG</span><div class="mt-0.5 flex items-center justify-end gap-1"><span class="text-[10px] font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">ÉCHOUÉ</span></div></div></div><div class="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm"><div class="flex items-center gap-4"><div class="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-orange-500"><iconify-icon icon="lucide:gamepad-2" class="text-xl"></iconify-icon></div><div class="flex flex-col"><span class="text-sm font-bold text-slate-900">Free Fire 100D</span><span class="text-[10px] text-slate-400 font-medium">ID: 10928371 • 09:12</span></div></div><div class="text-right"><span class="text-sm font-bold text-slate-900">- 150 HTG</span><div class="mt-0.5 flex items-center justify-end gap-1"><span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">SUCCÈS</span></div></div></div></div></div></div></main>
-<div v-scope="{ ...{&quot;activeItem&quot;:&quot;history&quot;,&quot;homeHref&quot;:&quot;/&quot;,&quot;historyHref&quot;:&quot;/historique&quot;,&quot;apiHref&quot;:&quot;/api-doc&quot;,&quot;profileHref&quot;:&quot;/profil&quot;}, $emit() {} }">
-<footer class="shrink-0 pb-[34px] px-6 py-4 bg-white border-t border-slate-100">
-  <nav class="flex items-center justify-around">
-    <a :href="homeHref" :class="{ 'text-blue-600 font-bold': activeItem === 'home', 'text-slate-400 font-medium': activeItem !== 'home' }" class="flex flex-col items-center gap-1 text-xs"><iconify-icon icon="lucide:layout-grid" class="text-2xl"></iconify-icon><span>Home</span></a>
-    <a :href="historyHref" :class="{ 'text-blue-600 font-bold': activeItem === 'history', 'text-slate-400 font-medium': activeItem !== 'history' }" class="flex flex-col items-center gap-1 text-xs"><iconify-icon icon="lucide:history" class="text-2xl"></iconify-icon><span>Historique</span></a>
-    <a :href="apiHref" :class="{ 'text-blue-600 font-bold': activeItem === 'api', 'text-slate-400 font-medium': activeItem !== 'api' }" class="flex flex-col items-center gap-1 text-xs"><iconify-icon icon="lucide:code-2" class="text-2xl"></iconify-icon><span>API Doc</span></a>
-    <a :href="profileHref" :class="{ 'text-blue-600 font-bold': activeItem === 'profile', 'text-slate-400 font-medium': activeItem !== 'profile' }" class="flex flex-col items-center gap-1 text-xs"><iconify-icon icon="lucide:settings" class="text-2xl"></iconify-icon><span>Profil</span></a>
-  </nav>
-</footer>
-</div>
-</div></body></html>
+</body>
+</html>

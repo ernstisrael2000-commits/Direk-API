@@ -71,24 +71,25 @@ Toujours :
 
 ## Étape actuelle :
 
-Phase 1 terminée — Intégration du design (7 pages frontend + serveur Express).
-Prochaine étape : Phase 2 — Configuration Supabase (tables + RLS).
+Phase 2 en cours — Backend Express complet (routes, auth, wallet, recharge, admin).
+Prochaine étape : Connecter Supabase (créer les tables + RLS + fonctions RPC atomiques).
 
 
 ## Fonctionnalités terminées :
 
 - [x] Import du design ZIP (5 pages adaptées + 2 nouvelles créées)
-- [ ] Connexion Supabase
-- [ ] Création table resellers
-- [ ] Création table produits
-- [ ] Création table wallet_transactions
-- [ ] Création table api_transactions
-- [ ] Fonction creer-reseller
-- [ ] Gestion produits (admin)
-- [ ] Recharge wallet (Pay'm)
-- [ ] Vérification paiement Pay'm (polling)
-- [ ] API recharge (FazerCards)
-- [ ] Régénération clé API
+- [x] Serveur Express avec sessions, rate limiting, gestion d'erreurs
+- [x] Auth : inscription, connexion, déconnexion, régénération clé API
+- [x] Dashboard : solde + 3 dernières transactions (branché sur vraies données)
+- [x] Historique : toutes les transactions, filtres (type, statut)
+- [x] Wallet topup : appel Pay'm, transaction pending → URL de redirection
+- [x] Wallet verify : polling Pay'm, crédit solde atomique (RPC Supabase)
+- [x] API recharge (FazerCards) : validation ID joueur, débit atomique, remboursement auto si échec
+- [x] Admin : CRUD produits, toggle actif/inactif, gestion resellers
+- [x] Pages branchées sur l'API (login, profil, historique, dashboard, recharge)
+- [x] Page recharge : un seul bouton "Recharger" (méthode choisie sur la page Pay'm)
+- [ ] Connexion Supabase (créer les tables + 2 fonctions RPC atomiques)
+- [ ] Création tables (resellers, produits, wallet_transactions, api_transactions)
 
 
 ---
@@ -100,7 +101,7 @@ Prochaine étape : Phase 2 — Configuration Supabase (tables + RLS).
 
 ```
 /
-├── server.js                  → Serveur Express (port 3000), sert les pages statiques
+├── server.js                  → Serveur Express (port 3000) — sessions, rate limiting, toutes les routes
 ├── package.json               → Dépendances Node.js (express)
 ├── package-lock.json          → Lockfile npm
 ├── replit.md                  → Vue d'ensemble projet + préférences utilisateur (Replit)
@@ -120,6 +121,20 @@ Prochaine étape : Phase 2 — Configuration Supabase (tables + RLS).
 │   ├── 04-documentation-api-direk.html
 │   └── 05-direk-api-profile-settings.html
 ├── attached_assets/           → Ressources d'origine (ZIP design + brief texte initial)
+├── lib/
+│   └── supabase.js            → Client Supabase singleton (service role key, server-side uniquement)
+├── middleware/
+│   ├── requireAuth.js         → Vérifie session active (renvoie 401 JSON ou redirige /login)
+│   ├── requireAdmin.js        → Vérifie Authorization: Bearer ADMIN_SECRET
+│   └── requireApiKey.js       → Vérifie X-API-Key: dk_live_... (compare bcrypt contre DB)
+├── routes/
+│   ├── auth.js                → POST /api/v1/auth/{register,login,logout,regenerate-key}
+│   ├── dashboard.js           → GET  /api/v1/dashboard
+│   ├── transactions.js        → GET  /api/v1/transactions
+│   ├── wallet.js              → POST /api/v1/wallet/{topup,verify}
+│   ├── recharge.js            → POST /api/v1/recharge  (auth par X-API-Key)
+│   ├── products.js            → GET  /api/v1/products
+│   └── admin.js               → CRUD /api/v1/admin/{products,resellers}
 └── docs/
     ├── PROJECT_MEMORY.md      → Ce fichier
     ├── SECURITY_RULES.md      → Règles de sécurité

@@ -1,19 +1,204 @@
-<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Direct API — Dashboard</title><script src="https://cdn.tailwindcss.com"></script><script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script><link href="https://api.fontshare.com/v2/css?f[]=satoshi@700,500,400&f[]=clash-grotesk@600&display=swap" rel="stylesheet"><style>body { font-family: 'Satoshi', sans-serif; -webkit-tap-highlight-color: transparent; } h1, h2, h3 { font-family: 'Clash Grotesk', sans-serif; } html { background-color: #F8FAFC; } @view-transition { navigation: auto; } .header-nav { view-transition-name: header-nav; } .bottom-nav { view-transition-name: bottom-nav; } .main-content { view-transition-name: main-content; } ::view-transition-old(header-nav), ::view-transition-new(header-nav), ::view-transition-old(bottom-nav), ::view-transition-new(bottom-nav) { animation: none; mix-blend-mode: normal; } ::view-transition-old(main-content) { animation: 0.25s ease-out both fade-out; } ::view-transition-new(main-content) { animation: 0.25s ease-in 0.1s both fade-in; } @keyframes fade-out { from { opacity: 1; } to { opacity: 0; } } @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }</style>
-<meta name="view-transition" content="same-origin">
-<script src="https://cdn.jsdelivr.net/npm/petite-vue@0.4.1/dist/petite-vue.iife.js" defer init></script>
-</head><body><div class="w-full h-screen flex flex-col bg-[#F8FAFC]">
-<div v-scope="{ ...{&quot;profileHref&quot;:&quot;/profil&quot;,&quot;isOnline&quot;:true}, $emit() {} }" class="header-nav">
-<header class="shrink-0 pt-14 px-6 flex items-center justify-between bg-white pb-4"><div class="flex flex-col"> <span class="text-gray-400 text-xs font-medium uppercase tracking-wider">Bienvenue chez Direct</span><h1 class="text-xl font-semibold text-slate-900">Elite Reseller</h1></div><div class="relative"><a :href="profileHref" class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 border border-slate-200"> <iconify-icon icon="lucide:user" class="text-xl"></iconify-icon> </a> <span v-if="isOnline" class="absolute top-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></span></div></header>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Direk API — Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@700,500,400&f[]=clash-grotesk@600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Satoshi', sans-serif; -webkit-tap-highlight-color: transparent; }
+    h1, h2, h3 { font-family: 'Clash Grotesk', sans-serif; }
+    html { background-color: #F8FAFC; }
+    @view-transition { navigation: auto; }
+    .header-nav  { view-transition-name: header-nav; }
+    .bottom-nav  { view-transition-name: bottom-nav; }
+    .main-content { view-transition-name: main-content; }
+    ::view-transition-old(header-nav), ::view-transition-new(header-nav),
+    ::view-transition-old(bottom-nav),  ::view-transition-new(bottom-nav)  { animation: none; mix-blend-mode: normal; }
+    ::view-transition-old(main-content) { animation: .25s ease-out both fade-out; }
+    ::view-transition-new(main-content) { animation: .25s ease-in .1s both fade-in; }
+    @keyframes fade-out { from { opacity:1 } to { opacity:0 } }
+    @keyframes fade-in  { from { opacity:0 } to { opacity:1 } }
+    .animate-spin { animation: spin 1s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+  </style>
+  <meta name="view-transition" content="same-origin">
+  <script src="https://cdn.jsdelivr.net/npm/petite-vue@0.4.1/dist/petite-vue.iife.js" defer init></script>
+</head>
+<body>
+<div v-scope="{
+  nom: '—',
+  balance_htg: '0.00',
+  apiKeyPreview: 'dk_live_••••••••••••••••••••••',
+  status: 'actif',
+  recentTransactions: [],
+  loading: true,
+  copyOk: false,
+  async init() {
+    try {
+      const r = await fetch('/api/v1/dashboard');
+      if (r.status === 401) { window.location.href = '/login'; return; }
+      const d = await r.json();
+      if (d.ok) {
+        this.nom = d.reseller.nom;
+        this.balance_htg = parseFloat(d.reseller.balance_htg).toLocaleString('fr', { minimumFractionDigits: 2 });
+        this.apiKeyPreview = d.reseller.apiKeyPreview;
+        this.status = d.reseller.status;
+        this.recentTransactions = d.recentTransactions;
+      }
+    } catch(e) { console.error('Dashboard load error', e); }
+    this.loading = false;
+  },
+  async copyKey() {
+    try { await navigator.clipboard.writeText(this.apiKeyPreview); this.copyOk = true; setTimeout(() => { this.copyOk = false }, 2000); } catch(e) {}
+  },
+  txIcon(tx) {
+    if (tx.type === 'wallet') return 'lucide:plus-circle';
+    if (tx.status === 'failed' || tx.status === 'refunded') return 'lucide:gamepad-2';
+    return 'lucide:gamepad-2';
+  },
+  txIconColor(tx) {
+    if (tx.type === 'wallet') return 'text-emerald-500 bg-emerald-50';
+    if (tx.status === 'failed' || tx.status === 'refunded') return 'text-red-500 bg-red-50';
+    return 'text-orange-500 bg-orange-50';
+  },
+  txAmountColor(tx) {
+    if (tx.type === 'wallet') return 'text-emerald-600';
+    if (tx.status === 'failed' || tx.status === 'refunded') return 'text-slate-400 line-through';
+    return 'text-slate-900';
+  },
+  txBadgeColor(tx) {
+    if (tx.status === 'confirmed' || tx.status === 'success') return 'text-emerald-600';
+    if (tx.status === 'failed' || tx.status === 'refunded') return 'text-red-500';
+    return 'text-slate-400';
+  },
+  txBadgeLabel(tx) {
+    const m = { confirmed: 'Complété', success: 'Succès', failed: 'Échoué', refunded: 'Remboursé', pending: 'En attente' };
+    return m[tx.status] || tx.status;
+  }
+}" @vue:mounted="init()" class="w-full h-screen flex flex-col bg-[#F8FAFC]">
+
+  <!-- Header -->
+  <div class="header-nav">
+    <header class="shrink-0 pt-14 px-6 flex items-center justify-between bg-white pb-4">
+      <div class="flex flex-col">
+        <span class="text-gray-400 text-xs font-medium uppercase tracking-wider">Bienvenue chez Direk</span>
+        <h1 class="text-xl font-semibold text-slate-900">{{ nom }}</h1>
+      </div>
+      <div class="relative">
+        <a href="/profil" class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 border border-slate-200">
+          <iconify-icon icon="lucide:user" class="text-xl"></iconify-icon>
+        </a>
+        <span v-if="status === 'actif'" class="absolute top-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></span>
+      </div>
+    </header>
+  </div>
+
+  <main class="flex-1 overflow-y-auto px-6 py-4 space-y-6 main-content">
+
+    <!-- Carte solde -->
+    <div class="relative w-full aspect-[16/9] rounded-[28px] overflow-hidden bg-gradient-to-br from-[#1E40AF] via-[#3B82F6] to-[#7C3AED] p-6 shadow-xl shadow-blue-200/50 flex flex-col justify-between text-white">
+      <div class="flex justify-between items-start">
+        <span class="text-blue-100 text-sm font-medium">Solde Disponible</span>
+        <iconify-icon icon="lucide:wallet" class="text-2xl text-white/80"></iconify-icon>
+      </div>
+      <div>
+        <div class="flex items-baseline gap-1">
+          <span v-if="loading"><iconify-icon icon="lucide:loader-2" class="text-2xl animate-spin"></iconify-icon></span>
+          <span v-else class="text-3xl font-bold tracking-tight">{{ balance_htg }}</span>
+          <span v-if="!loading" class="text-lg font-medium opacity-80">HTG</span>
+        </div>
+      </div>
+      <!-- Un seul bouton Recharger -->
+      <div class="mt-4">
+        <a href="/recharge" class="inline-flex items-center gap-2 py-3 px-6 bg-white/20 backdrop-blur-md rounded-xl text-xs font-semibold border border-white/20 active:scale-95 transition-transform">
+          <iconify-icon icon="lucide:plus-circle"></iconify-icon>
+          Recharger
+        </a>
+      </div>
+    </div>
+
+    <!-- Informations API -->
+    <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wide">Informations API</h2>
+        <span :class="status === 'actif' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'"
+          class="px-2 py-1 text-[10px] font-bold rounded-md uppercase">
+          {{ status === 'actif' ? 'Actif' : 'Suspendu' }}
+        </span>
+      </div>
+      <div class="bg-slate-50 rounded-xl p-3 flex items-center justify-between border border-slate-100">
+        <div class="flex flex-col gap-1 overflow-hidden">
+          <span class="text-[10px] text-slate-400 font-bold uppercase tracking-tight">API KEY</span>
+          <code class="text-sm font-mono text-slate-700 truncate">{{ apiKeyPreview }}</code>
+        </div>
+        <button @click="copyKey" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+          <iconify-icon :icon="copyOk ? 'lucide:check' : 'lucide:copy'" class="text-xl"></iconify-icon>
+        </button>
+      </div>
+      <a href="/profil" class="mt-4 w-full py-2.5 text-xs font-medium text-slate-500 flex items-center justify-center gap-2 border border-dashed border-slate-300 rounded-xl hover:bg-slate-50">
+        <iconify-icon icon="lucide:refresh-cw"></iconify-icon>
+        Régénérer la clé API
+      </a>
+    </div>
+
+    <!-- Dernières transactions -->
+    <div>
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wide">Dernières Transactions</h2>
+        <a href="/historique" class="text-xs font-semibold text-blue-600">Voir tout</a>
+      </div>
+
+      <!-- Skeleton loading -->
+      <div v-if="loading" class="space-y-3">
+        <div v-for="i in 3" :key="i" class="h-16 bg-slate-100 rounded-2xl animate-pulse"></div>
+      </div>
+
+      <!-- Liste -->
+      <div v-else-if="recentTransactions.length > 0" class="space-y-3">
+        <div v-for="tx in recentTransactions" :key="tx.id"
+          class="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+          <div class="flex items-center gap-4">
+            <div :class="txIconColor(tx)" class="w-10 h-10 rounded-full flex items-center justify-center">
+              <iconify-icon :icon="txIcon(tx)" class="text-xl"></iconify-icon>
+            </div>
+            <div class="flex flex-col">
+              <span class="text-sm font-bold text-slate-900">{{ tx.label }}</span>
+              <span class="text-xs text-slate-400">{{ tx.reference || tx.joueur_id || '' }}</span>
+            </div>
+          </div>
+          <div class="text-right">
+            <span :class="txAmountColor(tx)" class="text-sm font-bold">{{ tx.signe }} {{ parseFloat(tx.montant_htg).toLocaleString('fr') }} HTG</span>
+            <div class="flex items-center justify-end gap-1 mt-0.5">
+              <span :class="txBadgeColor(tx)" class="text-[10px] font-bold">{{ txBadgeLabel(tx) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vide -->
+      <div v-else class="text-center py-8 text-slate-400">
+        <iconify-icon icon="lucide:inbox" class="text-4xl mb-2"></iconify-icon>
+        <p class="text-sm font-medium">Aucune transaction pour l'instant</p>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Bottom nav -->
+  <div class="bottom-nav">
+    <footer class="shrink-0 pb-[34px] px-6 py-4 bg-white border-t border-slate-100">
+      <nav class="flex items-center justify-around">
+        <a href="/"           class="flex flex-col items-center gap-1 text-xs text-blue-600 font-bold"><iconify-icon icon="lucide:layout-grid" class="text-2xl"></iconify-icon><span>Home</span></a>
+        <a href="/historique" class="flex flex-col items-center gap-1 text-xs text-slate-400 font-medium"><iconify-icon icon="lucide:history" class="text-2xl"></iconify-icon><span>Historique</span></a>
+        <a href="/api-doc"    class="flex flex-col items-center gap-1 text-xs text-slate-400 font-medium"><iconify-icon icon="lucide:code-2" class="text-2xl"></iconify-icon><span>API Doc</span></a>
+        <a href="/profil"     class="flex flex-col items-center gap-1 text-xs text-slate-400 font-medium"><iconify-icon icon="lucide:settings" class="text-2xl"></iconify-icon><span>Profil</span></a>
+      </nav>
+    </footer>
+  </div>
+
 </div>
-<main class="flex-1 overflow-y-auto px-6 py-4 space-y-6 main-content"><div class="relative w-full aspect-[16/9] rounded-[28px] overflow-hidden bg-gradient-to-br from-[#1E40AF] via-[#3B82F6] to-[#7C3AED] p-6 shadow-xl shadow-blue-200/50 flex flex-col justify-between text-white"><div class="flex justify-between items-start"> <span class="text-blue-100 text-sm font-medium">Solde Disponible</span> <iconify-icon icon="lucide:wallet" class="text-2xl text-white/80"></iconify-icon></div><div><div class="flex items-baseline gap-1"> <span class="text-3xl font-bold tracking-tight">125,450.00</span> <span class="text-lg font-medium opacity-80">HTG</span></div> <span class="text-xs text-blue-200 mt-1 flex items-center gap-1"> <iconify-icon icon="lucide:trending-up" class="text-xs"></iconify-icon> +12% cette semaine </span></div><div class="flex gap-3 mt-4"><a href="/recharge" id="recharge-moncash-btn" class="flex-1 py-3 bg-white/20 backdrop-blur-md rounded-xl text-xs font-semibold flex items-center justify-center gap-2 border border-white/20"> <iconify-icon icon="lucide:plus-circle"></iconify-icon> MonCash </a><a href="/recharge" id="recharge-natcash-btn" class="flex-1 py-3 bg-white/20 backdrop-blur-md rounded-xl text-xs font-semibold flex items-center justify-center gap-2 border border-white/20"> <iconify-icon icon="lucide:plus-circle"></iconify-icon> NatCash </a></div></div><div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm"><div class="flex items-center justify-between mb-4"><h2 class="text-sm font-bold text-slate-900 uppercase tracking-wide">Informations API</h2> <span class="px-2 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-md uppercase">Actif</span></div><div class="bg-slate-50 rounded-xl p-3 flex items-center justify-between border border-slate-100"><div class="flex flex-col gap-1 overflow-hidden"> <span class="text-[10px] text-slate-400 font-bold uppercase tracking-tight">API KEY</span> <code class="text-sm font-mono text-slate-700 truncate">dk_live_98h2...5a2z</code></div><button id="copy-api-btn" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"> <iconify-icon icon="lucide:copy" class="text-xl"></iconify-icon> </button></div><button id="regen-api-btn" class="mt-4 w-full py-2.5 text-xs font-medium text-slate-500 flex items-center justify-center gap-2 border border-dashed border-slate-300 rounded-xl hover:bg-slate-50"> <iconify-icon icon="lucide:refresh-cw"></iconify-icon> Régénérer la clé API </button></div><div><div class="flex items-center justify-between mb-4"><h2 class="text-sm font-bold text-slate-900 uppercase tracking-wide">Dernières Transactions</h2> <a id="view-all-link" href="/historique" class="text-xs font-semibold text-blue-600">Voir tout</a></div><div class="space-y-3"><div class="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm"><div class="flex items-center gap-4"><div class="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-orange-500"> <iconify-icon icon="lucide:gamepad-2" class="text-xl"></iconify-icon></div><div class="flex flex-col"> <span class="text-sm font-bold text-slate-900">Free Fire 100D</span> <span class="text-xs text-slate-400">ID: 29384812 • 14:20</span></div></div><div class="text-right"> <span class="text-sm font-bold text-slate-900">- 150 HTG</span> <div class="flex items-center justify-end gap-1"> <span class="text-[10px] font-bold text-emerald-600">Succès</span></div></div></div><div class="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm"><div class="flex items-center gap-4"><div class="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500"> <iconify-icon icon="lucide:plus-circle" class="text-xl"></iconify-icon></div><div class="flex flex-col"> <span class="text-sm font-bold text-slate-900">Recharge MonCash</span> <span class="text-xs text-slate-400">ID: MC-29183 • 12:05</span></div></div><div class="text-right"> <span class="text-sm font-bold text-emerald-600">+ 5,000 HTG</span> <div class="flex items-center justify-end gap-1"> <span class="text-[10px] font-bold text-emerald-600">Complété</span></div></div></div><div class="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm"><div class="flex items-center gap-4"><div class="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-500"> <iconify-icon icon="lucide:gamepad-2" class="text-xl"></iconify-icon></div><div class="flex flex-col"> <span class="text-sm font-bold text-slate-900">Free Fire 500D</span> <span class="text-xs text-slate-400">ID: 10928374 • 10:45</span></div></div><div class="text-right"> <span class="text-sm font-bold text-slate-400 line-through">- 650 HTG</span> <div class="flex items-center justify-end gap-1"> <span class="text-[10px] font-bold text-red-500">Échoué / Remboursé</span></div></div></div></div></div></main>
-<div v-scope="{ ...{&quot;activeItem&quot;:&quot;home&quot;,&quot;homeHref&quot;:&quot;/&quot;,&quot;historyHref&quot;:&quot;/historique&quot;,&quot;apiHref&quot;:&quot;/api-doc&quot;,&quot;profileHref&quot;:&quot;/profil&quot;}, $emit() {} }" class="bottom-nav">
-<footer class="shrink-0 pb-[34px] px-6 py-4 bg-white border-t border-slate-100">
-  <nav class="flex items-center justify-around">
-    <a :href="homeHref" :class="{ 'text-blue-600 font-bold': activeItem === 'home', 'text-slate-400 font-medium': activeItem !== 'home' }" class="flex flex-col items-center gap-1 text-xs"><iconify-icon icon="lucide:layout-grid" class="text-2xl"></iconify-icon><span>Home</span></a>
-    <a :href="historyHref" :class="{ 'text-blue-600 font-bold': activeItem === 'history', 'text-slate-400 font-medium': activeItem !== 'history' }" class="flex flex-col items-center gap-1 text-xs"><iconify-icon icon="lucide:history" class="text-2xl"></iconify-icon><span>Historique</span></a>
-    <a :href="apiHref" :class="{ 'text-blue-600 font-bold': activeItem === 'api', 'text-slate-400 font-medium': activeItem !== 'api' }" class="flex flex-col items-center gap-1 text-xs"><iconify-icon icon="lucide:code-2" class="text-2xl"></iconify-icon><span>API Doc</span></a>
-    <a :href="profileHref" :class="{ 'text-blue-600 font-bold': activeItem === 'profile', 'text-slate-400 font-medium': activeItem !== 'profile' }" class="flex flex-col items-center gap-1 text-xs"><iconify-icon icon="lucide:settings" class="text-2xl"></iconify-icon><span>Profil</span></a>
-  </nav>
-</footer>
-</div>
-</div></body></html>
+</body>
+</html>
