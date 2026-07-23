@@ -1,7 +1,7 @@
-# Direk API — Journal du projet
+# Direct API — Journal du projet
 
 ## Vue d'ensemble
-**Direk API** est une plateforme B2B de recharge de jeux (Free Fire, et d'autres à venir).
+**Direct API** est une plateforme B2B de recharge de jeux (Free Fire, et d'autres à venir).
 Des "resellers" rechargent un solde chez le propriétaire, puis appellent une API pour déclencher des recharges de jeux pour leurs clients. Le propriétaire passe commande auprès d'un fournisseur officiel en coulisse — le reseller ne le voit jamais.
 
 Stack prévu :
