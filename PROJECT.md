@@ -49,14 +49,24 @@ Stack prévu :
 | `demander-recharge` | Fonction principale API : vérifie clé, solde, débite, appelle fournisseur, rembourse si échec |
 | `regenerer-cle-api` | Régénère la clé API d'un reseller (invalide l'ancienne) |
 
-### Pages frontend prévues (depuis le ZIP de design)
-| Page | Rôle |
-|------|------|
-| Page 1 | (à confirmer après décompression du ZIP) |
-| Page 2 | (à confirmer) |
-| Page 3 | (à confirmer) |
-| Page 4 | (à confirmer) |
-| Page 5 | (à confirmer) |
+### Pages frontend (depuis le ZIP de design)
+| Fichier | Page | Contenu clé |
+|---------|------|-------------|
+| `01-...dashboard.html` | **Dashboard (Home)** | Solde HTG, boutons MonCash/NatCash, clé API tronquée + copier + régénérer, 3 dernières transactions |
+| `02-...historique.html` | **Historique transactions** | Liste complète wallet + API transactions |
+| `03-...recharge-confirmation.html` | **Recharge wallet** | Saisie montant, sélection méthode (MonCash/NatCash), résumé frais 1.5%, CTA Pay'm |
+| `04-...documentation-api.html` | **Documentation API** | Auth header, endpoint `POST /api/v1/recharge`, exemples JSON |
+| `05-...profile-settings.html` | **Profil & Réglages** | Infos compte, 2FA toggle, clé API + régénérer, déconnexion |
+
+**Stack du design :** Tailwind CSS CDN + Iconify + Satoshi/Clash Grotesk (Fontshare) + petite-vue
+
+**Points importants du design :**
+- Application **mobile-first** avec bottom navigation (Home / Historique / API Doc / Profil)
+- Préfixe clé API affiché : `dk_live_`
+- Endpoint API montré dans le design : `POST /api/v1/recharge` (pas `/topup`)
+- Frais de transaction Pay'm : **1.5%** affichés dans le design
+- ⚠️ **Pas de page login/signup dans le design** — à créer (formulaire d'inscription + connexion)
+- ⚠️ **Pas de page admin** dans le design — à créer séparément (gestion catalogue produits)
 
 ### Variables d'environnement nécessaires
 | Variable | Usage |
