@@ -99,6 +99,8 @@ Prochaine étape : Phase 2 — Configuration Supabase (tables + RLS).
 /
 ├── server.js                  → Serveur Express (port 3000), sert les pages statiques
 ├── package.json               → Dépendances Node.js (express)
+├── package-lock.json          → Lockfile npm
+├── replit.md                  → Vue d'ensemble projet + préférences utilisateur (Replit)
 ├── PROJECT.md                 → Journal de bord du projet (sessions, décisions)
 ├── public/
 │   ├── index.html             → Dashboard reseller (page 1 du design)
@@ -108,6 +110,13 @@ Prochaine étape : Phase 2 — Configuration Supabase (tables + RLS).
 │   ├── profil.html            → Profil & Réglages (page 5)
 │   ├── login.html             → Connexion / Inscription (nouvelle)
 │   └── admin.html             → Admin catalogue produits (nouvelle)
+├── design_preview/            → Fichiers HTML originaux du ZIP de design (référence visuelle uniquement, ne pas modifier)
+│   ├── 01-direk-api-reseller-dashboard-updated-with-navigation.html
+│   ├── 02-historique-des-transactions-direk-api.html
+│   ├── 03-direk-api-recharge-confirmation.html
+│   ├── 04-documentation-api-direk.html
+│   └── 05-direk-api-profile-settings.html
+├── attached_assets/           → Ressources d'origine (ZIP design + brief texte initial)
 └── docs/
     ├── PROJECT_MEMORY.md      → Ce fichier
     ├── SECURITY_RULES.md      → Règles de sécurité
@@ -219,8 +228,12 @@ Fonctions prévues :
 
 - Base URL : `https://plopplop.solutionip.app/`
 - Créer paiement : `POST /api/paiement-marchand`
-- Vérifier : `POST /api/paiement-verify` (trans_status: "no" | "ok")
-- ⚠️ PAS de webhook — système polling uniquement
+  - Champs : `client_id`, `refference_id` (**⚠️ double f — faute de frappe dans leur API, à respecter exactement**), `montant` (HTG, >= 20), `payment_method` (moncash | kashpaw | natcash | all)
+  - Réponse : `{ status, message, url, transaction_id }` — rediriger le reseller vers `url`
+- Vérifier : `POST /api/paiement-verify`
+  - Champs : `client_id`, `refference_id`
+  - Réponse : `trans_status: "no"` (en attente) ou `"ok"` (confirmé)
+- ⚠️ PAS de webhook — système polling uniquement (appel à `/api/v1/wallet/verify` au retour de redirection ou par polling)
 - Variables : `PAYM_CLIENT_ID`, `PAYM_CLIENT_SECRET`
 
 ## FazerCards (fournisseur recharges jeux)
@@ -230,6 +243,18 @@ Fonctions prévues :
 - Version : `/api/v2`
 - Endpoints utilisés : `GET /api/v2/topups/offers`, `POST /api/v2/topups/order`, `GET /api/v2/topups/validate-id`
 - Variable : `FAZERCARDS_API_KEY`
+
+## Variables d'environnement complètes
+
+| Variable | Usage |
+|----------|-------|
+| `SUPABASE_URL` | URL du projet Supabase |
+| `SUPABASE_SERVICE_ROLE_KEY` | Clé service Supabase (serveur uniquement — jamais côté frontend) |
+| `PAYM_CLIENT_ID` | Identifiant marchand Pay'm |
+| `PAYM_CLIENT_SECRET` | Secret Pay'm |
+| `FAZERCARDS_API_KEY` | Clé API FazerCards (format `fc_…`) |
+| `ADMIN_SECRET` | Secret pour protéger les routes admin (`/admin`, `POST /api/v1/products`) |
+| `SESSION_SECRET` | Secret pour signer les sessions Express (déjà configuré dans Replit) |
 
 
 ---
