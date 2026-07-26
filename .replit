@@ -32,3 +32,8 @@ args = "node server.js"
 [[ports]]
 localPort = 3000
 externalPort = 80
+
+[userenv]
+
+[userenv.shared]
+APP_URL = "https://4bd965cd-f40c-4e88-8c5f-6909c6b1b42f-00-20u30riupxqor.kirk.replit.dev"
