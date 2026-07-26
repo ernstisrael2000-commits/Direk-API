@@ -10,6 +10,10 @@
   <style>
     body { font-family: 'Satoshi', sans-serif; -webkit-tap-highlight-color: transparent; }
     h1, h2, h3 { font-family: 'Clash Grotesk', sans-serif; }
+    .animate-pulse { animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: .4 } }
+    .slide-up { animation: slideUp 0.2s ease-out; }
+    @keyframes slideUp { from { transform: translateY(8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     body { visibility: hidden }
     [v-cloak] { display: none !important; }
   </style>
@@ -19,149 +23,626 @@
 <body class="bg-[#F8FAFC] min-h-screen flex flex-col">
 
 <div v-cloak v-scope="{
-  showAddForm: false,
-  products: [
-    { id: 1, game: 'Free Fire', name: '100 Diamants', code: 'ff_100d', prix_achat: 100, prix_vente: 150, actif: true },
-    { id: 2, game: 'Free Fire', name: '210 Diamants', code: 'ff_210d', prix_achat: 200, prix_vente: 300, actif: true },
-    { id: 3, game: 'Free Fire', name: '500 Diamants', code: 'ff_500d', prix_achat: 430, prix_vente: 650, actif: true },
-    { id: 4, game: 'Free Fire', name: '1060 Diamants', code: 'ff_1060d', prix_achat: 850, prix_vente: 1200, actif: false }
-  ]
+  tab: 'produits',
+  adminSecret: '',
+  secretOk: false,
+  secretError: '',
+  loading: false,
+  toast: null,
+
+  products: [],
+  services: [],
+  fournisseurs: [],
+  resellers: [],
+
+  showModal: false,
+  modalType: '',
+  modalData: {},
+  saving: false,
+
+  async init() {
+    const saved = sessionStorage.getItem('admin_secret');
+    if (saved) { this.adminSecret = saved; await this.verifySecret(); }
+  },
+
+  headers() {
+    return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + this.adminSecret };
+  },
+
+  async verifySecret() {
+    this.secretError = '';
+    try {
+      const r = await fetch('/api/v1/admin/products', { headers: this.headers() });
+      if (r.status === 403) { this.secretError = 'Secret incorrect.'; this.secretOk = false; return; }
+      const d = await r.json();
+      if (d.ok !== false) {
+        sessionStorage.setItem('admin_secret', this.adminSecret);
+        this.secretOk = true;
+        this.products = d.products || [];
+        await this.loadTab('services');
+        await this.loadTab('fournisseurs');
+        await this.loadTab('resellers');
+      }
+    } catch(e) { this.secretError = 'Erreur réseau.'; }
+  },
+
+  async loadTab(t) {
+    this.loading = true;
+    try {
+      if (t === 'produits') {
+        const r = await fetch('/api/v1/admin/products', { headers: this.headers() });
+        const d = await r.json();
+        if (d.ok) this.products = d.products;
+      } else if (t === 'services') {
+        const r = await fetch('/api/v1/admin/services', { headers: this.headers() });
+        const d = await r.json();
+        if (d.ok) this.services = d.services;
+      } else if (t === 'fournisseurs') {
+        const r = await fetch('/api/v1/admin/fournisseurs', { headers: this.headers() });
+        const d = await r.json();
+        if (d.ok) this.fournisseurs = d.fournisseurs;
+      } else if (t === 'resellers') {
+        const r = await fetch('/api/v1/admin/resellers', { headers: this.headers() });
+        const d = await r.json();
+        if (d.ok) this.resellers = d.resellers;
+      }
+    } catch(e) {}
+    this.loading = false;
+  },
+
+  async switchTab(t) {
+    this.tab = t;
+    await this.loadTab(t);
+  },
+
+  showToast(msg, type = 'success') {
+    this.toast = { msg, type };
+    setTimeout(() => { this.toast = null; }, 3000);
+  },
+
+  openModal(type, data = {}) {
+    this.modalType = type;
+    this.modalData = { ...data };
+    this.showModal = true;
+  },
+
+  closeModal() { this.showModal = false; this.modalData = {}; this.saving = false; },
+
+  // ── Products ──────────────────────────────────────────────────────
+  async toggleProduct(p) {
+    const r = await fetch('/api/v1/admin/products/' + p.id + '/toggle', {
+      method: 'PATCH', headers: this.headers()
+    });
+    const d = await r.json();
+    if (d.ok) { p.actif = d.product.actif; this.showToast(p.actif ? 'Produit activé' : 'Produit désactivé'); }
+  },
+
+  async saveProduct() {
+    this.saving = true;
+    const isEdit = !!this.modalData.id;
+    const url = isEdit ? '/api/v1/admin/products/' + this.modalData.id : '/api/v1/admin/products';
+    const method = isEdit ? 'PUT' : 'POST';
+
+    // Parse params_schema si c'est une chaîne
+    let ps = this.modalData.params_schema;
+    if (typeof ps === 'string') {
+      try { ps = JSON.parse(ps); } catch(e) { ps = []; }
+    }
+
+    const r = await fetch(url, {
+      method,
+      headers: this.headers(),
+      body: JSON.stringify({ ...this.modalData, params_schema: ps }),
+    });
+    const d = await r.json();
+    this.saving = false;
+    if (d.ok) {
+      await this.loadTab('produits');
+      this.closeModal();
+      this.showToast(isEdit ? 'Produit mis à jour' : 'Produit créé');
+    } else {
+      this.showToast(d.error || 'Erreur', 'error');
+    }
+  },
+
+  async deleteProduct(p) {
+    if (!confirm('Supprimer ce produit ? Cette action est irréversible.')) return;
+    const r = await fetch('/api/v1/admin/products/' + p.id, { method: 'DELETE', headers: this.headers() });
+    const d = await r.json();
+    if (d.ok) { await this.loadTab('produits'); this.showToast('Produit supprimé'); }
+    else { this.showToast(d.error, 'error'); }
+  },
+
+  // ── Services ──────────────────────────────────────────────────────
+  async saveService() {
+    this.saving = true;
+    const isEdit = !!this.modalData.id;
+    const url = isEdit ? '/api/v1/admin/services/' + this.modalData.id : '/api/v1/admin/services';
+    const method = isEdit ? 'PUT' : 'POST';
+    const r = await fetch(url, { method, headers: this.headers(), body: JSON.stringify(this.modalData) });
+    const d = await r.json();
+    this.saving = false;
+    if (d.ok) { await this.loadTab('services'); this.closeModal(); this.showToast(isEdit ? 'Service mis à jour' : 'Service créé'); }
+    else { this.showToast(d.error || 'Erreur', 'error'); }
+  },
+
+  async toggleService(svc) {
+    const newStatus = svc.status === 'actif' ? 'inactif' : 'actif';
+    const r = await fetch('/api/v1/admin/services/' + svc.id, {
+      method: 'PUT', headers: this.headers(), body: JSON.stringify({ status: newStatus })
+    });
+    const d = await r.json();
+    if (d.ok) { svc.status = newStatus; this.showToast(newStatus === 'actif' ? 'Service activé' : 'Service désactivé'); }
+  },
+
+  // ── Fournisseurs ──────────────────────────────────────────────────
+  async saveFournisseur() {
+    this.saving = true;
+    const isEdit = !!this.modalData.id;
+    const url = isEdit ? '/api/v1/admin/fournisseurs/' + this.modalData.id : '/api/v1/admin/fournisseurs';
+    const method = isEdit ? 'PUT' : 'POST';
+    let config = this.modalData.config;
+    if (typeof config === 'string') { try { config = JSON.parse(config); } catch(e) { config = {}; } }
+    const r = await fetch(url, { method, headers: this.headers(), body: JSON.stringify({ ...this.modalData, config }) });
+    const d = await r.json();
+    this.saving = false;
+    if (d.ok) { await this.loadTab('fournisseurs'); this.closeModal(); this.showToast(isEdit ? 'Fournisseur mis à jour' : 'Fournisseur créé'); }
+    else { this.showToast(d.error || 'Erreur', 'error'); }
+  },
+
+  // ── Resellers ─────────────────────────────────────────────────────
+  async toggleReseller(r) {
+    const newStatus = r.status === 'actif' ? 'suspendu' : 'actif';
+    const res = await fetch('/api/v1/admin/resellers/' + r.id + '/status', {
+      method: 'PATCH', headers: this.headers(), body: JSON.stringify({ status: newStatus })
+    });
+    const d = await res.json();
+    if (d.ok) { r.status = newStatus; this.showToast(newStatus === 'actif' ? 'Reseller activé' : 'Reseller suspendu'); }
+  },
+
+  formatHTG(v) { return parseFloat(v || 0).toLocaleString('fr', { minimumFractionDigits: 2 }); },
+  formatDate(s) { return new Date(s).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: '2-digit' }); },
 }" class="flex flex-col min-h-screen">
 
-  <!-- Header -->
-  <header class="shrink-0 pt-14 px-6 pb-4 bg-white border-b border-slate-100 flex items-center justify-between shadow-sm">
-    <div class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1E40AF] to-[#3B82F6] flex items-center justify-center">
-        <iconify-icon icon="lucide:shield" class="text-white text-xl"></iconify-icon>
+  <!-- ═══ SECRET SCREEN ════════════════════════════════════════════ -->
+  <div v-if="!secretOk" class="flex flex-col items-center justify-center flex-1 px-6 py-12">
+    <div class="w-full max-w-sm">
+      <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#1E40AF] to-[#3B82F6] flex items-center justify-center mb-6 mx-auto shadow-lg shadow-blue-200">
+        <iconify-icon icon="lucide:shield" class="text-white text-3xl"></iconify-icon>
       </div>
-      <div>
-        <h1 class="text-lg font-bold text-slate-900">Admin Panel</h1>
-        <p class="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Direct API</p>
-      </div>
-    </div>
-    <a href="/" class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 border border-slate-100">
-      <iconify-icon icon="lucide:layout-grid" class="text-xl"></iconify-icon>
-    </a>
-  </header>
-
-  <main class="flex-1 overflow-y-auto px-6 py-6 space-y-6">
-
-    <!-- Stats row -->
-    <div class="grid grid-cols-3 gap-3">
-      <div class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm text-center">
-        <p class="text-2xl font-bold text-slate-900">4</p>
-        <p class="text-[10px] text-slate-400 font-bold uppercase mt-1">Produits</p>
-      </div>
-      <div class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm text-center">
-        <p class="text-2xl font-bold text-emerald-600">3</p>
-        <p class="text-[10px] text-slate-400 font-bold uppercase mt-1">Actifs</p>
-      </div>
-      <div class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm text-center">
-        <p class="text-2xl font-bold text-red-500">1</p>
-        <p class="text-[10px] text-slate-400 font-bold uppercase mt-1">Inactifs</p>
-      </div>
-    </div>
-
-    <!-- Section titre + bouton ajouter -->
-    <div class="flex items-center justify-between">
-      <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wide">Catalogue Produits</h2>
-      <button @click="showAddForm = !showAddForm"
-        class="flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-[#1E40AF] to-[#3B82F6] text-white rounded-xl text-xs font-bold shadow-md shadow-blue-200">
-        <iconify-icon icon="lucide:plus"></iconify-icon>
-        Ajouter
-      </button>
-    </div>
-
-    <!-- Formulaire ajout (toggle) -->
-    <div v-if="showAddForm" class="bg-white rounded-2xl p-5 border border-blue-100 shadow-sm space-y-4">
-      <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
-        <iconify-icon icon="lucide:package-plus" class="text-blue-600"></iconify-icon>
-        Nouveau produit
-      </h3>
-      <div class="grid grid-cols-2 gap-3">
-        <div class="col-span-2 space-y-1">
-          <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Jeu / Fournisseur</label>
-          <input type="text" placeholder="ex: Free Fire"
-            class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
-        </div>
-        <div class="col-span-2 space-y-1">
-          <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nom du produit</label>
-          <input type="text" placeholder="ex: 100 Diamants"
-            class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
-        </div>
-        <div class="col-span-2 space-y-1">
-          <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Code produit</label>
-          <input type="text" placeholder="ex: ff_100d"
-            class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
-        </div>
-        <div class="space-y-1">
-          <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Prix achat (HTG)</label>
-          <input type="number" placeholder="0"
-            class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
-        </div>
-        <div class="space-y-1">
-          <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Prix vente (HTG)</label>
-          <input type="number" placeholder="0"
-            class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
-        </div>
-      </div>
-      <div class="flex gap-3 pt-2">
-        <button class="flex-1 py-3 bg-gradient-to-br from-[#1E40AF] to-[#3B82F6] text-white rounded-xl text-sm font-bold">
-          Enregistrer
-        </button>
-        <button @click="showAddForm = false"
-          class="flex-1 py-3 bg-slate-50 text-slate-500 rounded-xl text-sm font-bold border border-slate-200">
-          Annuler
+      <h1 class="text-2xl font-bold text-slate-900 text-center mb-1">Admin Panel</h1>
+      <p class="text-sm text-slate-400 text-center mb-8">Entrez votre secret administrateur pour continuer.</p>
+      <div class="space-y-3">
+        <input type="password" v-model="adminSecret" placeholder="Secret admin…"
+          @keydown.enter="verifySecret()"
+          class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+        <p v-if="secretError" class="text-xs text-red-500 font-medium text-center">{{ secretError }}</p>
+        <button @click="verifySecret()"
+          class="w-full py-3.5 bg-gradient-to-r from-[#1E40AF] to-[#3B82F6] text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-200 active:scale-95 transition-transform">
+          Accéder au panel
         </button>
       </div>
     </div>
+  </div>
 
-    <!-- Liste des produits -->
-    <div class="space-y-3">
-      <div v-for="p in products" :key="p.id"
-        class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-        <div class="p-4 flex items-start justify-between">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 shrink-0">
-              <iconify-icon icon="lucide:gamepad-2" class="text-xl"></iconify-icon>
+  <!-- ═══ ADMIN PANEL ══════════════════════════════════════════════ -->
+  <template v-if="secretOk">
+
+    <!-- Header -->
+    <header class="shrink-0 pt-14 px-6 pb-4 bg-white border-b border-slate-100 shadow-sm">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1E40AF] to-[#3B82F6] flex items-center justify-center">
+            <iconify-icon icon="lucide:shield" class="text-white text-xl"></iconify-icon>
+          </div>
+          <div>
+            <h1 class="text-lg font-bold text-slate-900">Admin Panel</h1>
+            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Direct API</p>
+          </div>
+        </div>
+        <a href="/" class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-100 text-slate-600">
+          <iconify-icon icon="lucide:layout-grid" class="text-xl"></iconify-icon>
+        </a>
+      </div>
+
+      <!-- Stats row -->
+      <div class="grid grid-cols-4 gap-2 mt-4">
+        <div class="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
+          <p class="text-lg font-bold text-slate-900">{{ products.length }}</p>
+          <p class="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Produits</p>
+        </div>
+        <div class="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
+          <p class="text-lg font-bold text-blue-600">{{ services.length }}</p>
+          <p class="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Services</p>
+        </div>
+        <div class="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
+          <p class="text-lg font-bold text-violet-600">{{ fournisseurs.length }}</p>
+          <p class="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Fournisseurs</p>
+        </div>
+        <div class="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
+          <p class="text-lg font-bold text-emerald-600">{{ resellers.filter(r => r.status === 'actif').length }}</p>
+          <p class="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Resellers</p>
+        </div>
+      </div>
+
+      <!-- Tab nav -->
+      <div class="flex gap-1 mt-4 bg-slate-100 rounded-xl p-1">
+        <button v-for="t in [{id:'produits',icon:'lucide:package'},{id:'services',icon:'lucide:layers'},{id:'fournisseurs',icon:'lucide:plug'},{id:'resellers',icon:'lucide:users'}]"
+          :key="t.id"
+          @click="switchTab(t.id)"
+          :class="tab === t.id ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500'"
+          class="flex-1 flex flex-col items-center gap-0.5 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wide transition-colors">
+          <iconify-icon :icon="t.icon" class="text-base"></iconify-icon>
+          {{ t.id }}
+        </button>
+      </div>
+    </header>
+
+    <main class="flex-1 overflow-y-auto px-6 py-5 space-y-3">
+
+      <!-- ── TAB: PRODUITS ──────────────────────────────────── -->
+      <div v-if="tab === 'produits'" class="slide-up space-y-3">
+        <div class="flex items-center justify-between">
+          <p class="text-xs font-bold text-slate-500 uppercase tracking-wide">{{ products.length }} produit{{ products.length !== 1 ? 's' : '' }}</p>
+          <button @click="openModal('product-add')"
+            class="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#1E40AF] to-[#3B82F6] text-white rounded-lg text-xs font-bold shadow-md shadow-blue-200">
+            <iconify-icon icon="lucide:plus"></iconify-icon> Ajouter
+          </button>
+        </div>
+
+        <div v-if="loading" class="space-y-3">
+          <div v-for="i in 3" :key="i" class="h-24 bg-slate-100 rounded-2xl animate-pulse"></div>
+        </div>
+
+        <div v-else-if="products.length === 0" class="flex flex-col items-center py-12 text-center">
+          <iconify-icon icon="lucide:package-x" class="text-4xl text-slate-200 mb-3"></iconify-icon>
+          <p class="text-sm font-bold text-slate-400">Aucun produit</p>
+        </div>
+
+        <div v-else class="space-y-3">
+          <div v-for="p in products" :key="p.id" class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div class="p-4 flex items-start justify-between">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 shrink-0">
+                  <iconify-icon icon="lucide:package" class="text-lg"></iconify-icon>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-sm font-bold text-slate-900 truncate">{{ p.nom }}</p>
+                  <p class="text-[10px] text-slate-400 mt-0.5">
+                    <span v-if="p.service_nom" class="text-blue-500">{{ p.service_nom }}</span>
+                    <span v-if="p.service_nom && p.fournisseur_nom"> · </span>
+                    <span v-if="p.fournisseur_nom">{{ p.fournisseur_nom }}</span>
+                    <span v-if="!p.service_nom && !p.fournisseur_nom" class="text-amber-400">⚠ Non assigné</span>
+                  </p>
+                </div>
+              </div>
+              <div class="relative inline-flex items-center cursor-pointer shrink-0 ml-2">
+                <input type="checkbox" class="sr-only peer" :checked="p.actif" @change="toggleProduct(p)">
+                <div class="w-9 h-5 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+              </div>
+            </div>
+            <div class="px-4 pb-3 flex gap-2">
+              <div class="flex-1 bg-slate-50 rounded-xl p-2 text-center border border-slate-100">
+                <p class="text-[9px] text-slate-400 font-bold uppercase">Achat</p>
+                <p class="text-xs font-bold text-slate-700 mt-0.5">{{ formatHTG(p.prix_achat_htg) }}</p>
+              </div>
+              <div class="flex-1 bg-blue-50 rounded-xl p-2 text-center border border-blue-100">
+                <p class="text-[9px] text-blue-400 font-bold uppercase">Vente</p>
+                <p class="text-xs font-bold text-blue-700 mt-0.5">{{ formatHTG(p.prix_vente_htg) }}</p>
+              </div>
+              <div class="flex-1 bg-emerald-50 rounded-xl p-2 text-center border border-emerald-100">
+                <p class="text-[9px] text-emerald-400 font-bold uppercase">Marge</p>
+                <p class="text-xs font-bold text-emerald-700 mt-0.5">{{ formatHTG(p.marge_htg) }}</p>
+              </div>
+            </div>
+            <div class="border-t border-slate-50 px-4 py-2 flex gap-2">
+              <button @click="openModal('product-edit', {id:p.id, nom:p.nom, code_fournisseur:p.code_fournisseur, prix_achat_htg:p.prix_achat_htg, prix_vente_htg:p.prix_vente_htg, service_id:p.service_id, fournisseur_id:p.fournisseur_id, actif:p.actif, params_schema:JSON.stringify(p.params_schema||[],null,2)})"
+                class="flex-1 py-2 text-xs font-bold text-blue-600 flex items-center justify-center gap-1.5 rounded-lg hover:bg-blue-50 transition-colors">
+                <iconify-icon icon="lucide:pencil" class="text-sm"></iconify-icon> Modifier
+              </button>
+              <button @click="deleteProduct(p)"
+                class="flex-1 py-2 text-xs font-bold text-red-500 flex items-center justify-center gap-1.5 rounded-lg hover:bg-red-50 transition-colors">
+                <iconify-icon icon="lucide:trash-2" class="text-sm"></iconify-icon> Supprimer
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TAB: SERVICES ──────────────────────────────────── -->
+      <div v-if="tab === 'services'" class="slide-up space-y-3">
+        <div class="flex items-center justify-between">
+          <p class="text-xs font-bold text-slate-500 uppercase tracking-wide">{{ services.length }} service{{ services.length !== 1 ? 's' : '' }}</p>
+          <button @click="openModal('service-add')"
+            class="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#1E40AF] to-[#3B82F6] text-white rounded-lg text-xs font-bold shadow-md shadow-blue-200">
+            <iconify-icon icon="lucide:plus"></iconify-icon> Ajouter
+          </button>
+        </div>
+
+        <div v-if="services.length === 0" class="flex flex-col items-center py-12 text-center">
+          <iconify-icon icon="lucide:layers" class="text-4xl text-slate-200 mb-3"></iconify-icon>
+          <p class="text-sm font-bold text-slate-400">Aucun service configuré</p>
+          <p class="text-xs text-slate-300 mt-1">Créez le premier service pour commencer.</p>
+        </div>
+
+        <div v-else class="space-y-3">
+          <div v-for="svc in services" :key="svc.id" class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+            <div class="flex items-start justify-between mb-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                  <img v-if="svc.image_url" :src="svc.image_url" :alt="svc.nom" class="w-7 h-7 object-contain rounded">
+                  <iconify-icon v-else icon="lucide:layers" class="text-blue-500 text-lg"></iconify-icon>
+                </div>
+                <div>
+                  <p class="text-sm font-bold text-slate-900">{{ svc.nom }}</p>
+                  <p class="text-[10px] font-mono text-slate-400">{{ svc.slug }}</p>
+                </div>
+              </div>
+              <span :class="svc.status === 'actif' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'"
+                class="text-[9px] font-bold uppercase px-2 py-1 rounded-full">
+                {{ svc.status }}
+              </span>
+            </div>
+            <p v-if="svc.description" class="text-xs text-slate-500 mb-3">{{ svc.description }}</p>
+            <div class="flex gap-2">
+              <button @click="toggleService(svc)"
+                :class="svc.status === 'actif' ? 'text-amber-600 hover:bg-amber-50' : 'text-emerald-600 hover:bg-emerald-50'"
+                class="flex-1 py-2 text-xs font-bold flex items-center justify-center gap-1.5 rounded-lg transition-colors">
+                <iconify-icon :icon="svc.status === 'actif' ? 'lucide:pause-circle' : 'lucide:play-circle'" class="text-sm"></iconify-icon>
+                {{ svc.status === 'actif' ? 'Désactiver' : 'Activer' }}
+              </button>
+              <button @click="openModal('service-edit', {id:svc.id,nom:svc.nom,slug:svc.slug,description:svc.description||'',image_url:svc.image_url||'',ordre:svc.ordre,status:svc.status})"
+                class="flex-1 py-2 text-xs font-bold text-blue-600 flex items-center justify-center gap-1.5 rounded-lg hover:bg-blue-50 transition-colors">
+                <iconify-icon icon="lucide:pencil" class="text-sm"></iconify-icon> Modifier
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TAB: FOURNISSEURS ──────────────────────────────── -->
+      <div v-if="tab === 'fournisseurs'" class="slide-up space-y-3">
+        <div class="flex items-center justify-between">
+          <p class="text-xs font-bold text-slate-500 uppercase tracking-wide">{{ fournisseurs.length }} fournisseur{{ fournisseurs.length !== 1 ? 's' : '' }}</p>
+          <button @click="openModal('fournisseur-add')"
+            class="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#1E40AF] to-[#3B82F6] text-white rounded-lg text-xs font-bold shadow-md shadow-blue-200">
+            <iconify-icon icon="lucide:plus"></iconify-icon> Ajouter
+          </button>
+        </div>
+
+        <div v-if="fournisseurs.length === 0" class="flex flex-col items-center py-12 text-center">
+          <iconify-icon icon="lucide:plug" class="text-4xl text-slate-200 mb-3"></iconify-icon>
+          <p class="text-sm font-bold text-slate-400">Aucun fournisseur</p>
+        </div>
+
+        <div v-else class="space-y-3">
+          <div v-for="f in fournisseurs" :key="f.id" class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+            <div class="flex items-start justify-between mb-2">
+              <div>
+                <div class="flex items-center gap-2">
+                  <p class="text-sm font-bold text-slate-900">{{ f.nom }}</p>
+                  <span v-if="f.adaptateur_disponible" class="text-[9px] font-bold bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded-full">CODE ✓</span>
+                  <span v-else class="text-[9px] font-bold bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded-full">CODE MANQUANT</span>
+                </div>
+                <p class="text-[10px] font-mono text-slate-400 mt-0.5">{{ f.slug }}</p>
+              </div>
+              <span :class="f.status === 'actif' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'"
+                class="text-[9px] font-bold uppercase px-2 py-1 rounded-full shrink-0">
+                {{ f.status }}
+              </span>
+            </div>
+            <div class="space-y-1 mb-3">
+              <div class="flex items-center gap-2 text-xs text-slate-500">
+                <iconify-icon icon="lucide:link" class="text-slate-300 shrink-0"></iconify-icon>
+                <span class="truncate font-mono text-[10px]">{{ f.base_url }}</span>
+              </div>
+              <div class="flex items-center gap-2 text-xs text-slate-500">
+                <iconify-icon icon="lucide:key" class="text-slate-300 shrink-0"></iconify-icon>
+                <code class="text-[10px] bg-slate-50 px-1.5 py-0.5 rounded">{{ f.api_key_env }}</code>
+              </div>
+            </div>
+            <button @click="openModal('fournisseur-edit', {id:f.id,nom:f.nom,base_url:f.base_url,api_key_env:f.api_key_env,status:f.status,config:JSON.stringify(f.config||{},null,2)})"
+              class="w-full py-2 text-xs font-bold text-blue-600 flex items-center justify-center gap-1.5 rounded-lg hover:bg-blue-50 transition-colors border border-blue-50">
+              <iconify-icon icon="lucide:pencil" class="text-sm"></iconify-icon> Modifier
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TAB: RESELLERS ─────────────────────────────────── -->
+      <div v-if="tab === 'resellers'" class="slide-up space-y-3">
+        <p class="text-xs font-bold text-slate-500 uppercase tracking-wide">{{ resellers.length }} reseller{{ resellers.length !== 1 ? 's' : '' }}</p>
+
+        <div v-if="resellers.length === 0" class="flex flex-col items-center py-12 text-center">
+          <iconify-icon icon="lucide:users" class="text-4xl text-slate-200 mb-3"></iconify-icon>
+          <p class="text-sm font-bold text-slate-400">Aucun reseller enregistré</p>
+        </div>
+
+        <div v-else class="space-y-3">
+          <div v-for="r in resellers" :key="r.id" class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+            <div class="flex items-start justify-between mb-3">
+              <div>
+                <p class="text-sm font-bold text-slate-900">{{ r.nom }}</p>
+                <p class="text-xs text-slate-400">{{ r.email }}</p>
+              </div>
+              <span :class="r.status === 'actif' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'"
+                class="text-[9px] font-bold uppercase px-2 py-1 rounded-full">
+                {{ r.status }}
+              </span>
+            </div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-[10px] text-slate-400">Membre depuis {{ formatDate(r.created_at) }}</span>
+              <span class="text-sm font-bold text-blue-700">{{ formatHTG(r.balance_htg) }} HTG</span>
+            </div>
+            <button @click="toggleReseller(r)"
+              :class="r.status === 'actif' ? 'border-red-100 text-red-500 hover:bg-red-50' : 'border-emerald-100 text-emerald-600 hover:bg-emerald-50'"
+              class="w-full py-2 text-xs font-bold flex items-center justify-center gap-1.5 rounded-lg transition-colors border">
+              <iconify-icon :icon="r.status === 'actif' ? 'lucide:user-x' : 'lucide:user-check'" class="text-sm"></iconify-icon>
+              {{ r.status === 'actif' ? 'Suspendre' : 'Réactiver' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- ═══ MODAL ═════════════════════════════════════════════════ -->
+    <div v-if="showModal" class="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm" @click.self="closeModal()">
+      <div class="w-full max-w-lg bg-white rounded-t-3xl px-6 pt-6 pb-10 shadow-2xl max-h-[90vh] overflow-y-auto">
+
+        <!-- Handle -->
+        <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5"></div>
+
+        <!-- ── Modal: Ajouter/Modifier Produit ── -->
+        <template v-if="modalType === 'product-add' || modalType === 'product-edit'">
+          <h3 class="text-base font-bold text-slate-900 mb-5">{{ modalType === 'product-add' ? 'Ajouter un produit' : 'Modifier le produit' }}</h3>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1.5">Nom du produit <span class="text-red-400">*</span></label>
+              <input v-model="modalData.nom" type="text" placeholder="Ex: 100 Diamants Free Fire"
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
             </div>
             <div>
-              <p class="text-sm font-bold text-slate-900">{{ p.name }}</p>
-              <p class="text-[10px] text-slate-400 font-medium">{{ p.game }} • <code class="font-mono">{{ p.code }}</code></p>
+              <label class="block text-xs font-bold text-slate-600 mb-1.5">Code fournisseur <span class="text-red-400">*</span></label>
+              <input v-model="modalData.code_fournisseur" type="text" placeholder="Ex: ff_100d"
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5">Prix achat (HTG) <span class="text-red-400">*</span></label>
+                <input v-model="modalData.prix_achat_htg" type="number" step="0.01" min="0" placeholder="0.00"
+                  class="w-full px-3 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5">Prix vente (HTG) <span class="text-red-400">*</span></label>
+                <input v-model="modalData.prix_vente_htg" type="number" step="0.01" min="0" placeholder="0.00"
+                  class="w-full px-3 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1.5">Service</label>
+              <select v-model="modalData.service_id"
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+                <option value="">— Aucun —</option>
+                <option v-for="s in services" :key="s.id" :value="s.id">{{ s.nom }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1.5">Fournisseur</label>
+              <select v-model="modalData.fournisseur_id"
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+                <option value="">— Aucun —</option>
+                <option v-for="f in fournisseurs" :key="f.id" :value="f.id">{{ f.nom }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1.5">Paramètres (JSON)</label>
+              <textarea v-model="modalData.params_schema" rows="4" placeholder='[{"name":"player_id","label":"ID Joueur","type":"text","required":true}]'
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 text-xs font-mono focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"></textarea>
+              <p class="text-[10px] text-slate-400 mt-1">Format : <code>[{"name":"…","label":"…","type":"text|select|number","required":true}]</code></p>
             </div>
           </div>
-          <!-- Toggle actif -->
-          <div class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" class="sr-only peer" :checked="p.actif" @change="p.actif = !p.actif">
-            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+          <div class="flex gap-3 mt-6">
+            <button @click="closeModal()" class="flex-1 py-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-600">Annuler</button>
+            <button @click="saveProduct()" :disabled="saving"
+              class="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#1E40AF] to-[#3B82F6] text-white text-sm font-bold shadow-lg shadow-blue-200 disabled:opacity-50">
+              {{ saving ? 'Enregistrement…' : (modalType === 'product-add' ? 'Créer' : 'Enregistrer') }}
+            </button>
           </div>
-        </div>
-        <div class="px-4 pb-4 flex gap-4">
-          <div class="flex-1 bg-slate-50 rounded-xl p-3 text-center border border-slate-100">
-            <p class="text-[10px] text-slate-400 font-bold uppercase">Achat</p>
-            <p class="text-sm font-bold text-slate-700 mt-0.5">{{ p.prix_achat }} HTG</p>
+        </template>
+
+        <!-- ── Modal: Ajouter/Modifier Service ── -->
+        <template v-if="modalType === 'service-add' || modalType === 'service-edit'">
+          <h3 class="text-base font-bold text-slate-900 mb-5">{{ modalType === 'service-add' ? 'Ajouter un service' : 'Modifier le service' }}</h3>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1.5">Nom <span class="text-red-400">*</span></label>
+              <input v-model="modalData.nom" type="text" placeholder="Ex: Free Fire"
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1.5">Slug (URL) <span class="text-red-400">*</span></label>
+              <input v-model="modalData.slug" type="text" placeholder="Ex: free-fire"
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+              <p class="text-[10px] text-slate-400 mt-1">Lettres minuscules, chiffres et tirets uniquement.</p>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1.5">Description</label>
+              <textarea v-model="modalData.description" rows="2" placeholder="Description du service…"
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"></textarea>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1.5">URL image/logo</label>
+              <input v-model="modalData.image_url" type="url" placeholder="https://…"
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1.5">Ordre d'affichage</label>
+              <input v-model="modalData.ordre" type="number" min="0" placeholder="0"
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+            </div>
           </div>
-          <div class="flex-1 bg-blue-50 rounded-xl p-3 text-center border border-blue-100">
-            <p class="text-[10px] text-blue-400 font-bold uppercase">Vente</p>
-            <p class="text-sm font-bold text-blue-700 mt-0.5">{{ p.prix_vente }} HTG</p>
+          <div class="flex gap-3 mt-6">
+            <button @click="closeModal()" class="flex-1 py-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-600">Annuler</button>
+            <button @click="saveService()" :disabled="saving"
+              class="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#1E40AF] to-[#3B82F6] text-white text-sm font-bold shadow-lg shadow-blue-200 disabled:opacity-50">
+              {{ saving ? 'Enregistrement…' : (modalType === 'service-add' ? 'Créer' : 'Enregistrer') }}
+            </button>
           </div>
-          <div class="flex-1 bg-emerald-50 rounded-xl p-3 text-center border border-emerald-100">
-            <p class="text-[10px] text-emerald-400 font-bold uppercase">Marge</p>
-            <p class="text-sm font-bold text-emerald-700 mt-0.5">{{ p.prix_vente - p.prix_achat }} HTG</p>
+        </template>
+
+        <!-- ── Modal: Ajouter/Modifier Fournisseur ── -->
+        <template v-if="modalType === 'fournisseur-add' || modalType === 'fournisseur-edit'">
+          <h3 class="text-base font-bold text-slate-900 mb-5">{{ modalType === 'fournisseur-add' ? 'Ajouter un fournisseur' : 'Modifier le fournisseur' }}</h3>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1.5">Nom <span class="text-red-400">*</span></label>
+              <input v-model="modalData.nom" type="text" placeholder="Ex: FazerCards"
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+            </div>
+            <div v-if="modalType === 'fournisseur-add'">
+              <label class="block text-xs font-bold text-slate-600 mb-1.5">Slug <span class="text-red-400">*</span></label>
+              <input v-model="modalData.slug" type="text" placeholder="Ex: fazercards"
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+              <p class="text-[10px] text-slate-400 mt-1">Doit correspondre à un adaptateur code dans <code>lib/providers/</code>.</p>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1.5">URL de base <span class="text-red-400">*</span></label>
+              <input v-model="modalData.base_url" type="url" placeholder="https://api.example.com/v1"
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1.5">Variable d'env clé API <span class="text-red-400">*</span></label>
+              <input v-model="modalData.api_key_env" type="text" placeholder="Ex: FAZERCARDS_API_KEY"
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1.5">Config (JSON)</label>
+              <textarea v-model="modalData.config" rows="3" placeholder='{"supports_validate": true}'
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 text-xs font-mono focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"></textarea>
+            </div>
           </div>
-        </div>
-        <div class="border-t border-slate-50 px-4 py-2 flex gap-2">
-          <button class="flex-1 py-2 text-xs font-bold text-blue-600 flex items-center justify-center gap-1.5 rounded-lg hover:bg-blue-50 transition-colors">
-            <iconify-icon icon="lucide:pencil" class="text-sm"></iconify-icon> Modifier
-          </button>
-          <button class="flex-1 py-2 text-xs font-bold text-red-500 flex items-center justify-center gap-1.5 rounded-lg hover:bg-red-50 transition-colors">
-            <iconify-icon icon="lucide:trash-2" class="text-sm"></iconify-icon> Supprimer
-          </button>
-        </div>
+          <div class="flex gap-3 mt-6">
+            <button @click="closeModal()" class="flex-1 py-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-600">Annuler</button>
+            <button @click="saveFournisseur()" :disabled="saving"
+              class="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#1E40AF] to-[#3B82F6] text-white text-sm font-bold shadow-lg shadow-blue-200 disabled:opacity-50">
+              {{ saving ? 'Enregistrement…' : (modalType === 'fournisseur-add' ? 'Créer' : 'Enregistrer') }}
+            </button>
+          </div>
+        </template>
+
       </div>
     </div>
 
-  </main>
+    <!-- ═══ TOAST ═════════════════════════════════════════════════ -->
+    <div v-if="toast"
+      :class="toast.type === 'error' ? 'bg-red-500' : 'bg-slate-900'"
+      class="fixed bottom-6 left-1/2 -translate-x-1/2 px-5 py-3 rounded-2xl text-white text-sm font-bold shadow-xl flex items-center gap-2 z-50 transition-all">
+      <iconify-icon :icon="toast.type === 'error' ? 'lucide:x-circle' : 'lucide:check-circle'" class="text-lg"></iconify-icon>
+      {{ toast.msg }}
+    </div>
+
+  </template>
 
 </div>
 </body>

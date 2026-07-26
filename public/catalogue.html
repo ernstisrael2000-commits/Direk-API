@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Direk API — Catalogue</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@700,500,400&f[]=clash-grotesk@600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Satoshi', sans-serif; -webkit-tap-highlight-color: transparent; }
+    h1, h2, h3 { font-family: 'Clash Grotesk', sans-serif; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .animate-pulse { animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: .4 } }
+    .slide-up { animation: slideUp 0.25s ease-out; }
+    @keyframes slideUp { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    body { visibility: hidden }
+    [v-cloak] { display: none !important; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/petite-vue@0.4.1/dist/petite-vue.iife.js" defer init></script>
+  <script>(async()=>{try{const r=await fetch('/api/v1/auth/me');if(r.status===401){window.location.replace('/login')}else{document.body.style.visibility='visible'}}catch(e){document.body.style.visibility='visible'}})();</script>
+</head>
+<body class="bg-[#F8FAFC] min-h-screen flex flex-col">
+
+<div v-cloak v-scope="{
+  step: 'services',
+  services: [],
+  selectedService: null,
+  produits: [],
+  selectedProduit: null,
+  params: {},
+  balance: 0,
+  loading: true,
+  loadingProduits: false,
+  submitting: false,
+  result: null,
+  error: null,
+
+  async init() {
+    await this.loadBalance();
+    await this.loadServices();
+  },
+
+  async loadBalance() {
+    try {
+      const r = await fetch('/api/v1/dashboard');
+      if (r.status === 401) { window.location.href = '/login'; return; }
+      const d = await r.json();
+      if (d.ok) this.balance = d.reseller.balance_htg;
+    } catch(e) {}
+  },
+
+  async loadServices() {
+    this.loading = true;
+    try {
+      const r = await fetch('/api/v1/services');
+      if (r.status === 401) { window.location.href = '/login'; return; }
+      const d = await r.json();
+      if (d.ok) this.services = d.services;
+    } catch(e) {}
+    this.loading = false;
+  },
+
+  async selectService(svc) {
+    this.selectedService = svc;
+    this.selectedProduit = null;
+    this.params = {};
+    this.error = null;
+    this.step = 'produits';
+    this.loadingProduits = true;
+    try {
+      const r = await fetch('/api/v1/services/' + svc.slug + '/products');
+      const d = await r.json();
+      if (d.ok) this.produits = d.produits;
+    } catch(e) {}
+    this.loadingProduits = false;
+  },
+
+  selectProduit(p) {
+    this.selectedProduit = p;
+    this.params = {};
+    this.error = null;
+    // Pré-remplir les params avec une valeur vide
+    (p.params_schema || []).forEach(f => { this.params[f.name] = ''; });
+    this.step = 'form';
+  },
+
+  back() {
+    this.error = null;
+    this.result = null;
+    if (this.step === 'produits') { this.step = 'services'; this.selectedService = null; }
+    else if (this.step === 'form') { this.step = 'produits'; this.selectedProduit = null; }
+    else if (this.step === 'result') { this.step = 'form'; }
+  },
+
+  canAfford() {
+    if (!this.selectedProduit) return true;
+    return parseFloat(this.balance) >= parseFloat(this.selectedProduit.prix_vente_htg);
+  },
+
+  async submitOrder() {
+    if (this.submitting) return;
+    this.error = null;
+    this.submitting = true;
+    try {
+      const r = await fetch('/api/v1/orders/web', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product_id: this.selectedProduit.id, params: this.params }),
+      });
+      const d = await r.json();
+      if (d.ok) {
+        this.result = { ok: true, ...d };
+        await this.loadBalance();
+      } else {
+        this.result = { ok: false, ...d };
+      }
+      this.step = 'result';
+    } catch(e) {
+      this.error = 'Erreur réseau. Vérifiez votre connexion.';
+    }
+    this.submitting = false;
+  },
+
+  serviceIcon(svc) {
+    const icons = {
+      'free-fire': 'lucide:flame',
+      'cartes-cadeaux': 'lucide:gift',
+      'abonnements': 'lucide:refresh-cw',
+    };
+    return icons[svc.slug] || 'lucide:zap';
+  },
+
+  serviceGradient(i) {
+    const g = [
+      'from-orange-400 to-red-500',
+      'from-violet-500 to-purple-600',
+      'from-blue-500 to-cyan-500',
+      'from-emerald-400 to-teal-500',
+      'from-pink-500 to-rose-500',
+      'from-amber-400 to-orange-500',
+    ];
+    return g[i % g.length];
+  },
+
+  formatHTG(v) {
+    return parseFloat(v).toLocaleString('fr', { minimumFractionDigits: 2 });
+  }
+}" class="flex flex-col min-h-screen">
+
+  <!-- Header -->
+  <header class="shrink-0 pt-14 px-6 pb-4 bg-white border-b border-slate-100 shadow-sm">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <button v-if="step !== 'services'" @click="back()"
+          class="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 border border-slate-100 active:scale-95 transition-transform">
+          <iconify-icon icon="lucide:arrow-left" class="text-lg"></iconify-icon>
+        </button>
+        <div v-if="step === 'services'">
+          <h1 class="text-lg font-bold text-slate-900">Catalogue</h1>
+          <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Choisissez un service</p>
+        </div>
+        <div v-else-if="step === 'produits'">
+          <h1 class="text-lg font-bold text-slate-900">{{ selectedService?.nom }}</h1>
+          <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Choisissez un produit</p>
+        </div>
+        <div v-else-if="step === 'form'">
+          <h1 class="text-lg font-bold text-slate-900">{{ selectedProduit?.nom }}</h1>
+          <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Informations</p>
+        </div>
+        <div v-else-if="step === 'result'">
+          <h1 class="text-lg font-bold text-slate-900">Résultat</h1>
+          <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Commande</p>
+        </div>
+      </div>
+
+      <!-- Balance pill -->
+      <div class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 rounded-full border border-blue-100">
+        <iconify-icon icon="lucide:wallet" class="text-blue-500 text-sm"></iconify-icon>
+        <span class="text-xs font-bold text-blue-700">{{ formatHTG(balance) }} HTG</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 overflow-y-auto px-6 py-6">
+
+    <!-- ═══ STEP: SERVICES ════════════════════════════════════════ -->
+    <div v-if="step === 'services'" class="slide-up">
+      <!-- Loading skeleton -->
+      <div v-if="loading" class="grid grid-cols-2 gap-3">
+        <div v-for="i in 4" :key="i" class="h-32 bg-slate-100 rounded-2xl animate-pulse"></div>
+      </div>
+
+      <!-- Empty state -->
+      <div v-else-if="!loading && services.length === 0" class="flex flex-col items-center justify-center py-20 text-center">
+        <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+          <iconify-icon icon="lucide:package-x" class="text-3xl text-slate-300"></iconify-icon>
+        </div>
+        <p class="text-sm font-bold text-slate-900">Aucun service disponible</p>
+        <p class="text-xs text-slate-400 mt-1">L'admin n'a pas encore configuré de services.</p>
+      </div>
+
+      <!-- Service grid -->
+      <div v-else class="grid grid-cols-2 gap-3">
+        <button v-for="(svc, i) in services" :key="svc.id"
+          @click="selectService(svc)"
+          class="relative overflow-hidden rounded-2xl shadow-sm active:scale-95 transition-transform text-left">
+          <div :class="'bg-gradient-to-br ' + serviceGradient(i)" class="p-4 h-32 flex flex-col justify-between">
+            <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center">
+              <img v-if="svc.image_url" :src="svc.image_url" :alt="svc.nom" class="w-6 h-6 object-contain rounded">
+              <iconify-icon v-else :icon="serviceIcon(svc)" class="text-white text-xl"></iconify-icon>
+            </div>
+            <div>
+              <p class="text-white font-bold text-sm leading-tight">{{ svc.nom }}</p>
+              <p v-if="svc.description" class="text-white/70 text-[10px] mt-0.5 line-clamp-1">{{ svc.description }}</p>
+            </div>
+          </div>
+          <div class="absolute top-2 right-2">
+            <div class="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
+              <iconify-icon icon="lucide:chevron-right" class="text-white text-xs"></iconify-icon>
+            </div>
+          </div>
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══ STEP: PRODUITS ════════════════════════════════════════ -->
+    <div v-if="step === 'produits'" class="slide-up space-y-3">
+      <!-- Loading -->
+      <div v-if="loadingProduits" class="space-y-3">
+        <div v-for="i in 3" :key="i" class="h-20 bg-slate-100 rounded-2xl animate-pulse"></div>
+      </div>
+
+      <!-- Empty -->
+      <div v-else-if="!loadingProduits && produits.length === 0" class="flex flex-col items-center justify-center py-20 text-center">
+        <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+          <iconify-icon icon="lucide:inbox" class="text-3xl text-slate-300"></iconify-icon>
+        </div>
+        <p class="text-sm font-bold text-slate-900">Aucun produit disponible</p>
+        <p class="text-xs text-slate-400 mt-1">Ce service n'a pas encore de produits actifs.</p>
+      </div>
+
+      <!-- Product list -->
+      <button v-else v-for="p in produits" :key="p.id"
+        @click="selectProduit(p)"
+        class="w-full bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center justify-between active:scale-[0.98] transition-transform text-left">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 shrink-0">
+            <iconify-icon icon="lucide:zap" class="text-lg"></iconify-icon>
+          </div>
+          <div>
+            <p class="text-sm font-bold text-slate-900">{{ p.nom }}</p>
+            <p class="text-[10px] text-slate-400 font-medium mt-0.5">via {{ p.fournisseur || 'Fournisseur' }}</p>
+          </div>
+        </div>
+        <div class="text-right shrink-0 ml-2">
+          <p class="text-sm font-bold text-blue-700">{{ formatHTG(p.prix_vente_htg) }}</p>
+          <p class="text-[10px] text-slate-400">HTG</p>
+        </div>
+      </button>
+    </div>
+
+    <!-- ═══ STEP: FORM ════════════════════════════════════════════ -->
+    <div v-if="step === 'form'" class="slide-up space-y-4">
+
+      <!-- Résumé produit -->
+      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-xs text-slate-400 font-bold uppercase tracking-wide">Produit sélectionné</p>
+            <p class="text-base font-bold text-slate-900 mt-1">{{ selectedProduit?.nom }}</p>
+            <p class="text-xs text-slate-400 mt-0.5">{{ selectedService?.nom }} · {{ selectedProduit?.fournisseur }}</p>
+          </div>
+          <div class="text-right">
+            <p class="text-xl font-bold text-blue-700">{{ formatHTG(selectedProduit?.prix_vente_htg) }}</p>
+            <p class="text-[10px] text-slate-400">HTG</p>
+          </div>
+        </div>
+
+        <!-- Balance check -->
+        <div v-if="!canAfford()" class="mt-3 p-3 bg-red-50 rounded-xl border border-red-100">
+          <div class="flex items-center gap-2">
+            <iconify-icon icon="lucide:alert-triangle" class="text-red-500 text-sm shrink-0"></iconify-icon>
+            <p class="text-xs text-red-600 font-medium">Solde insuffisant. Rechargez votre wallet d'abord.</p>
+          </div>
+          <a href="/recharge" class="mt-2 flex items-center justify-center gap-1.5 w-full py-2 bg-red-500 text-white rounded-xl text-xs font-bold">
+            <iconify-icon icon="lucide:plus-circle"></iconify-icon>
+            Recharger le wallet
+          </a>
+        </div>
+      </div>
+
+      <!-- Champs dynamiques -->
+      <div v-if="selectedProduit && selectedProduit.params_schema.length > 0" class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-4">
+        <p class="text-xs font-bold text-slate-500 uppercase tracking-wide">Informations requises</p>
+
+        <div v-for="field in selectedProduit.params_schema" :key="field.name">
+          <label class="block text-xs font-bold text-slate-700 mb-1.5">
+            {{ field.label || field.name }}
+            <span v-if="field.required" class="text-red-400 ml-0.5">*</span>
+          </label>
+
+          <!-- Select -->
+          <select v-if="field.type === 'select'"
+            v-model="params[field.name]"
+            class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 bg-white focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+            <option value="">Choisir...</option>
+            <option v-for="opt in (field.options || [])" :key="opt" :value="opt">{{ opt }}</option>
+          </select>
+
+          <!-- Text / number -->
+          <input v-else
+            :type="field.type === 'number' ? 'number' : 'text'"
+            v-model="params[field.name]"
+            :placeholder="field.placeholder || ('Entrez ' + (field.label || field.name).toLowerCase())"
+            class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder-slate-300 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+        </div>
+      </div>
+
+      <!-- No params needed -->
+      <div v-else-if="selectedProduit && selectedProduit.params_schema.length === 0"
+        class="bg-slate-50 rounded-2xl border border-slate-100 p-4 flex items-center gap-3">
+        <iconify-icon icon="lucide:check-circle" class="text-emerald-500 text-xl shrink-0"></iconify-icon>
+        <p class="text-sm text-slate-600">Aucune information supplémentaire requise.</p>
+      </div>
+
+      <!-- Error -->
+      <div v-if="error" class="p-4 bg-red-50 rounded-2xl border border-red-100">
+        <div class="flex items-center gap-2">
+          <iconify-icon icon="lucide:x-circle" class="text-red-500 shrink-0"></iconify-icon>
+          <p class="text-sm text-red-600 font-medium">{{ error }}</p>
+        </div>
+      </div>
+
+      <!-- CTA -->
+      <button @click="submitOrder()"
+        :disabled="submitting || !canAfford()"
+        :class="submitting || !canAfford()
+          ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+          : 'bg-gradient-to-r from-[#1E40AF] to-[#3B82F6] text-white shadow-lg shadow-blue-200 active:scale-[0.98]'"
+        class="w-full py-4 rounded-2xl text-sm font-bold transition-all flex items-center justify-center gap-2">
+        <iconify-icon v-if="submitting" icon="lucide:loader-2" class="animate-spin"></iconify-icon>
+        <iconify-icon v-else icon="lucide:send"></iconify-icon>
+        <span>{{ submitting ? 'Traitement en cours…' : 'Confirmer la commande' }}</span>
+      </button>
+    </div>
+
+    <!-- ═══ STEP: RESULT ══════════════════════════════════════════ -->
+    <div v-if="step === 'result'" class="slide-up">
+
+      <!-- Succès -->
+      <div v-if="result && result.ok" class="space-y-4">
+        <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+          <div class="bg-gradient-to-br from-emerald-400 to-teal-500 p-8 flex flex-col items-center text-center">
+            <div class="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mb-4">
+              <iconify-icon icon="lucide:check" class="text-white text-3xl"></iconify-icon>
+            </div>
+            <h2 class="text-xl font-bold text-white">Commande réussie !</h2>
+            <p class="text-white/80 text-sm mt-1">{{ result.produit_nom }}</p>
+          </div>
+          <div class="p-5 space-y-3">
+            <div class="flex justify-between items-center py-2 border-b border-slate-50">
+              <span class="text-xs text-slate-400 font-bold uppercase">Montant débité</span>
+              <span class="text-sm font-bold text-slate-900">{{ formatHTG(result.montant_htg) }} HTG</span>
+            </div>
+            <div v-if="result.ref_fournisseur" class="flex justify-between items-center py-2 border-b border-slate-50">
+              <span class="text-xs text-slate-400 font-bold uppercase">Réf. fournisseur</span>
+              <span class="text-xs font-mono text-slate-600">{{ result.ref_fournisseur }}</span>
+            </div>
+            <div class="flex justify-between items-center py-2">
+              <span class="text-xs text-slate-400 font-bold uppercase">Solde restant</span>
+              <span class="text-sm font-bold text-blue-700">{{ formatHTG(balance) }} HTG</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <a href="/historique" class="flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-white border border-slate-100 text-sm font-bold text-slate-700 shadow-sm active:scale-95 transition-transform">
+            <iconify-icon icon="lucide:clock"></iconify-icon>
+            Historique
+          </a>
+          <button @click="step = 'services'; selectedService = null; selectedProduit = null; result = null"
+            class="flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-[#1E40AF] to-[#3B82F6] text-sm font-bold text-white shadow-lg shadow-blue-200 active:scale-95 transition-transform">
+            <iconify-icon icon="lucide:plus"></iconify-icon>
+            Nouvelle commande
+          </button>
+        </div>
+      </div>
+
+      <!-- Échec / remboursé -->
+      <div v-else-if="result && !result.ok" class="space-y-4">
+        <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+          <div class="bg-gradient-to-br from-red-400 to-rose-500 p-8 flex flex-col items-center text-center">
+            <div class="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mb-4">
+              <iconify-icon icon="lucide:x" class="text-white text-3xl"></iconify-icon>
+            </div>
+            <h2 class="text-xl font-bold text-white">Commande échouée</h2>
+            <p class="text-white/80 text-sm mt-1">Votre solde a été remboursé automatiquement</p>
+          </div>
+          <div class="p-5">
+            <div class="p-4 bg-red-50 rounded-xl border border-red-100">
+              <p class="text-sm text-red-700 font-medium">{{ result.error || 'Une erreur est survenue.' }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <button @click="back()"
+            class="flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-white border border-slate-100 text-sm font-bold text-slate-700 shadow-sm active:scale-95 transition-transform">
+            <iconify-icon icon="lucide:arrow-left"></iconify-icon>
+            Réessayer
+          </button>
+          <a href="/recharge" class="flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-[#1E40AF] to-[#3B82F6] text-sm font-bold text-white shadow-lg shadow-blue-200 active:scale-95 transition-transform">
+            <iconify-icon icon="lucide:wallet"></iconify-icon>
+            Recharger
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Bottom nav -->
+  <nav class="shrink-0 pb-safe bg-white border-t border-slate-100 px-6 py-3 flex items-center justify-around shadow-[0_-4px_16px_rgba(0,0,0,0.04)]">
+    <a href="/" class="flex flex-col items-center gap-0.5 text-slate-400 hover:text-slate-700 transition-colors">
+      <iconify-icon icon="lucide:layout-grid" class="text-xl"></iconify-icon>
+      <span class="text-[9px] font-bold uppercase tracking-wider">Dashboard</span>
+    </a>
+    <a href="/catalogue" class="flex flex-col items-center gap-0.5 text-blue-600">
+      <iconify-icon icon="lucide:shopping-bag" class="text-xl"></iconify-icon>
+      <span class="text-[9px] font-bold uppercase tracking-wider">Catalogue</span>
+    </a>
+    <a href="/historique" class="flex flex-col items-center gap-0.5 text-slate-400 hover:text-slate-700 transition-colors">
+      <iconify-icon icon="lucide:clock" class="text-xl"></iconify-icon>
+      <span class="text-[9px] font-bold uppercase tracking-wider">Historique</span>
+    </a>
+    <a href="/recharge" class="flex flex-col items-center gap-0.5 text-slate-400 hover:text-slate-700 transition-colors">
+      <iconify-icon icon="lucide:wallet" class="text-xl"></iconify-icon>
+      <span class="text-[9px] font-bold uppercase tracking-wider">Wallet</span>
+    </a>
+    <a href="/profil" class="flex flex-col items-center gap-0.5 text-slate-400 hover:text-slate-700 transition-colors">
+      <iconify-icon icon="lucide:user" class="text-xl"></iconify-icon>
+      <span class="text-[9px] font-bold uppercase tracking-wider">Profil</span>
+    </a>
+  </nav>
+
+</div>
+</body>
+</html>

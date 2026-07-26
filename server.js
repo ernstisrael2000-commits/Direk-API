@@ -77,6 +77,7 @@ app.get('/recharge',   (req, res) => res.sendFile(path.join(__dirname, 'public/r
 app.get('/api-doc',    (req, res) => res.sendFile(path.join(__dirname, 'public/api-doc.html')));
 app.get('/profil',     (req, res) => res.sendFile(path.join(__dirname, 'public/profil.html')));
 app.get('/login',      (req, res) => res.sendFile(path.join(__dirname, 'public/login.html')));
+app.get('/catalogue',  (req, res) => res.sendFile(path.join(__dirname, 'public/catalogue.html')));
 app.get('/admin',      (req, res) => res.sendFile(path.join(__dirname, 'public/admin.html')));
 
 // ─── Health check ─────────────────────────────────────────────────────────────

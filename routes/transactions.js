@@ -48,8 +48,41 @@ router.get('/', requireAuth, async (req, res) => {
     }
   }
 
-  // API transactions
-  if (!type || type === 'recharge') {
+  // Commandes (v2 multi-service)
+  if (!type || type === 'recharge' || type === 'commande') {
+    let q = supabase
+      .from('commandes')
+      .select('id, produit_id, params, prix_reseller, status, ref_fournisseur, created_at, produits(nom), services(nom, slug)')
+      .eq('reseller_id', resellerId)
+      .order('created_at', { ascending: false })
+      .range(off, off + lim - 1);
+
+    if (status) {
+      const statusMap = { success: 'success', failed: 'failed', refunded: 'refunded' };
+      q = q.eq('status', statusMap[status] || status);
+    }
+
+    const { data, error } = await q;
+    if (!error && data) {
+      results.push(...data.map(t => ({
+        id: t.id,
+        type: 'commande',
+        label: t.produits?.nom || 'Commande',
+        service: t.services?.nom || null,
+        service_slug: t.services?.slug || null,
+        joueur_id: t.params?.player_id || null,
+        ref_fournisseur: t.ref_fournisseur,
+        montant_centimes: t.prix_reseller,
+        montant_htg: (t.prix_reseller / 100).toFixed(2),
+        signe: '-',
+        status: t.status,
+        created_at: t.created_at,
+      })));
+    }
+  }
+
+  // API transactions (legacy v1 — conservées pour rétro-compat)
+  if (type === 'recharge_legacy') {
     let q = supabase
       .from('api_transactions')
       .select('id, produit_id, joueur_id, prix_reseller, status, ref_fournisseur, created_at, produits(nom, fournisseur)')

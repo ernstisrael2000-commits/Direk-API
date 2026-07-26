@@ -25,12 +25,13 @@ Le serveur écoute sur le port `3000` (ou `$PORT`).
 | Route | Fichier | Description |
 |-------|---------|-------------|
 | `/` | `public/index.html` | Dashboard reseller |
+| `/catalogue` | `public/catalogue.html` | Catalogue services + flux commande |
 | `/historique` | `public/historique.html` | Historique transactions |
 | `/recharge` | `public/recharge.html` | Recharge wallet |
 | `/api-doc` | `public/api-doc.html` | Documentation API |
 | `/profil` | `public/profil.html` | Profil & Réglages |
 | `/login` | `public/login.html` | Connexion / Inscription |
-| `/admin` | `public/admin.html` | Admin catalogue produits |
+| `/admin` | `public/admin.html` | Admin panel (Produits / Services / Fournisseurs / Resellers) |
 
 ## Variables d'environnement requises (prochaines étapes)
 
