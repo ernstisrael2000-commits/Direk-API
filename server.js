@@ -4,6 +4,7 @@ const session = require('express-session');
 const rateLimit = require('express-rate-limit');
 
 const app = express();
+app.set('trust proxy', 1); // Replit proxy (X-Forwarded-For)
 const PORT = process.env.PORT || 3000;
 
 // ─── Middleware globaux ────────────────────────────────────────────────────────
