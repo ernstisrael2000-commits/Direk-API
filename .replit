@@ -37,3 +37,5 @@ externalPort = 80
 
 [userenv.shared]
 APP_URL = "https://4bd965cd-f40c-4e88-8c5f-6909c6b1b42f-00-20u30riupxqor.kirk.replit.dev"
+NODE_ENV = "production"
+SUPABASE_URL = "https://rzdhiwroxujkbjgovesu.supabase.co"
