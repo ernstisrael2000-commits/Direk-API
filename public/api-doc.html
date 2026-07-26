@@ -7,45 +7,79 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
   <link href="https://api.fontshare.com/v2/css?f[]=satoshi@700,500,400&f[]=clash-grotesk@600&display=swap" rel="stylesheet">
-  <meta name="view-transition" content="same-origin">
   <script src="https://cdn.jsdelivr.net/npm/petite-vue@0.4.1/dist/petite-vue.iife.js" defer init></script>
   <script>(async()=>{try{const r=await fetch('/api/v1/auth/me');if(r.status===401){window.location.replace('/login')}else{document.body.style.visibility='visible'}}catch(e){document.body.style.visibility='visible'}})();</script>
   <style>
-    body { font-family: 'Satoshi', sans-serif; -webkit-tap-highlight-color: transparent; visibility: hidden; }
-    h1, h2, h3, h4 { font-family: 'Clash Grotesk', sans-serif; }
-    .code-block { font-family: 'ui-monospace', 'SFMono-Regular', Menlo, Monaco, Consolas, monospace; }
-    [v-cloak] { display: none !important; }
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    .tab-active { background: linear-gradient(135deg, #1E40AF, #3B82F6); color: white; }
-    .tab-inactive { background: white; color: #64748b; border: 1px solid #e2e8f0; }
-    .copy-btn:active { transform: scale(0.92); }
-    pre { white-space: pre; overflow-x: auto; }
+    body { font-family:'Satoshi',sans-serif; -webkit-tap-highlight-color:transparent; visibility:hidden; background:#0d1117; color:#e6edf3; }
+    h1,h2,h3,h4 { font-family:'Clash Grotesk',sans-serif; }
+    [v-cloak] { display:none !important; }
+    .no-scrollbar::-webkit-scrollbar { display:none; }
+    .no-scrollbar { -ms-overflow-style:none; scrollbar-width:none; }
+    pre { white-space:pre; overflow-x:auto; }
+    .code-font { font-family:'ui-monospace','SFMono-Regular',Menlo,Monaco,Consolas,monospace; }
+
+    /* Glass cards */
+    .glass { background:rgba(22,27,34,0.9); border:1px solid rgba(48,54,61,0.8); }
+    .glass-light { background:rgba(30,37,46,0.6); border:1px solid rgba(48,54,61,0.5); }
+
+    /* Method badges */
+    .badge-post { background:linear-gradient(135deg,#f97316,#ea580c); color:#fff; }
+    .badge-get  { background:linear-gradient(135deg,#10b981,#059669); color:#fff; }
+
+    /* Service tabs */
+    .tab-active { background:linear-gradient(135deg,#f97316,#ef4444); color:#fff; box-shadow:0 4px 20px rgba(249,115,22,0.4); }
+    .tab-inactive { background:rgba(30,37,46,0.6); color:#8b949e; border:1px solid rgba(48,54,61,0.6); }
+
+    /* Code block colors */
+    .c-key    { color:#79c0ff; }
+    .c-str    { color:#a5d6ff; }
+    .c-val    { color:#ffa657; }
+    .c-green  { color:#56d364; }
+    .c-red    { color:#f85149; }
+    .c-orange { color:#f0883e; }
+    .c-purple { color:#d2a8ff; }
+    .c-gray   { color:#8b949e; }
+    .c-white  { color:#e6edf3; }
+
+    /* Glow effects */
+    .glow-orange { box-shadow:0 0 20px rgba(249,115,22,0.2); }
+    .glow-green  { box-shadow:0 0 20px rgba(16,185,129,0.2); }
+
+    /* Animations */
+    .animate-pulse-slow { animation:pulse 2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+    .slide-up { animation:slideUp 0.25s ease-out; }
+    @keyframes slideUp { from{transform:translateY(10px);opacity:0} to{transform:translateY(0);opacity:1} }
+
+    /* Scrollbar for code blocks */
+    pre::-webkit-scrollbar { height:4px; }
+    pre::-webkit-scrollbar-track { background:transparent; }
+    pre::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:2px; }
+
+    /* Nav active */
+    .nav-active { color:#f97316; }
+    .nav-inactive { color:#8b949e; }
   </style>
 </head>
-<body class="bg-[#F8FAFC] min-h-screen flex flex-col">
+<body class="min-h-screen flex flex-col">
 
 <div v-cloak v-scope="{
-  activeService: null,
   services: [],
+  activeService: null,
   products: [],
   loadingServices: true,
   loadingProducts: false,
   copied: {},
+  expandedSection: 'order',
 
   async init() {
-    await this.loadServices();
-  },
-
-  async loadServices() {
-    this.loadingServices = true;
     try {
       const r = await fetch('/api/v1/services');
       if (r.status === 401) { window.location.href = '/login'; return; }
       const d = await r.json();
       if (d.ok) {
         this.services = d.services;
-        if (d.services.length > 0) this.selectService(d.services[0]);
+        if (d.services.length > 0) await this.selectService(d.services[0]);
       }
     } catch(e) {}
     this.loadingServices = false;
@@ -63,336 +97,318 @@
     this.loadingProducts = false;
   },
 
-  async copyText(id, text) {
+  async copy(id, text) {
     try {
       await navigator.clipboard.writeText(text);
       this.copied[id] = true;
-      setTimeout(() => { this.copied[id] = false; }, 1800);
+      setTimeout(() => { this.copied[id] = false; }, 2000);
     } catch(e) {}
   },
 
-  serviceIcon(slug) {
-    const icons = { 'free-fire': 'lucide:flame', 'cartes-cadeaux': 'lucide:gift', 'abonnements': 'lucide:refresh-cw' };
-    return icons[slug] || 'lucide:zap';
-  },
+  firstId() { return this.products[0]?.id || 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'; },
 
-  serviceGradient(slug) {
-    const g = { 'free-fire': 'from-orange-500 to-red-600', 'cartes-cadeaux': 'from-violet-500 to-purple-600' };
-    return g[slug] || 'from-blue-500 to-cyan-500';
-  },
-
-  formatHTG(v) { return parseFloat(v).toLocaleString('fr', { minimumFractionDigits: 2 }); },
-
-  firstProductId() {
-    return this.products.length > 0 ? this.products[0].id : 'uuid-du-produit';
-  },
-
-  curlOrder() {
-    const pid = this.firstProductId();
+  bodyExample() {
     const isFF = this.activeService?.slug === 'free-fire';
-    const params = isFF
-      ? ',\n  \\"params\\": { \\"player_id\\": \\"123456789\\", \\"server\\": \\"IND\\" }'
-      : ',\n  \\"params\\": {}';
-    return `curl -X POST https://votre-domaine.com/api/v1/orders \\
-  -H \\"X-API-Key: dk_live_votre_cle_api\\" \\
-  -H \\"Content-Type: application/json\\" \\
-  -d '{\\"product_id\\": \\"${pid}\\"${isFF ? ',\n    \\"params\\": {\\"player_id\\": \\"123456789\\", \\"server\\": \\"IND\\"}' : '}'}}'`;
+    return isFF
+      ? `{\n  \"product_id\": \"${this.firstId()}\",\n  \"params\": {\n    \"player_id\": \"123456789\"\n  }\n}`
+      : `{\n  \"product_id\": \"${this.firstId()}\",\n  \"params\": {}\n}`;
   },
 
-  jsonOrder() {
-    const pid = this.firstProductId();
-    const isFF = this.activeService?.slug === 'free-fire';
-    if (isFF) {
-      return `{
-  "product_id": "${pid}",
-  "params": {
-    "player_id": "123456789",
-    "server": "IND"
-  }
-}`;
-    }
-    return `{
-  "product_id": "${pid}",
-  "params": {}
-}`;
-  }
+  formatHTG(v) { return parseFloat(v).toLocaleString('fr',{minimumFractionDigits:2}); }
 }" class="flex flex-col min-h-screen">
 
-  <!-- ── Header ── -->
-  <header class="shrink-0 pt-14 px-6 pb-4 bg-white border-b border-slate-100 shadow-sm">
-    <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-lg font-bold text-slate-900">Documentation API</h1>
-        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Référence technique pour resellers</p>
+  <!-- ══ HEADER ══════════════════════════════════════════════════════════════ -->
+  <header class="shrink-0 pt-12 px-5 pb-5" style="background:linear-gradient(180deg,#161b22 0%,#0d1117 100%); border-bottom:1px solid rgba(48,54,61,0.6)">
+    <div class="flex items-center justify-between mb-1">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,#f97316,#ef4444)">
+          <iconify-icon icon="lucide:code-2" class="text-white text-lg"></iconify-icon>
+        </div>
+        <div>
+          <h1 class="text-base font-bold text-white">Documentation API</h1>
+          <p class="text-[10px] font-bold uppercase tracking-wider" style="color:#8b949e">Direct API v1 · REST/JSON</p>
+        </div>
       </div>
-      <div class="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
-        <iconify-icon icon="lucide:code-2" class="text-lg"></iconify-icon>
+      <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style="background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.3)">
+        <div class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse-slow"></div>
+        <span class="text-[10px] font-bold text-emerald-400">Online</span>
       </div>
     </div>
   </header>
 
-  <main class="flex-1 overflow-y-auto px-6 py-6 pb-28 space-y-8">
+  <!-- ══ MAIN ════════════════════════════════════════════════════════════════ -->
+  <main class="flex-1 overflow-y-auto px-5 py-6 pb-28 space-y-7">
 
-    <!-- ── Intro ── -->
-    <section class="bg-gradient-to-br from-[#1E40AF] to-[#3B82F6] rounded-3xl p-6 text-white shadow-lg shadow-blue-200">
-      <div class="flex items-center gap-2 mb-3">
-        <div class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
-          <iconify-icon icon="lucide:zap" class="text-lg"></iconify-icon>
+    <!-- ── Intro card ── -->
+    <section class="rounded-2xl overflow-hidden" style="background:linear-gradient(135deg,rgba(249,115,22,0.12),rgba(239,68,68,0.08)); border:1px solid rgba(249,115,22,0.25)">
+      <div class="p-5">
+        <div class="flex items-center gap-2 mb-3">
+          <iconify-icon icon="lucide:zap" class="text-orange-400 text-base"></iconify-icon>
+          <span class="text-xs font-bold text-orange-400 uppercase tracking-widest">Vue d'ensemble</span>
         </div>
-        <span class="text-xs font-bold uppercase tracking-widest text-white/70">Direct API v1</span>
-      </div>
-      <h2 class="text-xl font-bold leading-snug">Intégrez les recharges de jeux dans votre application</h2>
-      <p class="text-white/70 text-sm mt-2 leading-relaxed">Une seule API REST pour déclencher des recharges (diamants, gems, passes…) directement depuis votre site ou bot. Vous gérez les prix, Direct API gère la livraison.</p>
-      <div class="mt-4 flex flex-wrap gap-2">
-        <span class="px-2.5 py-1 bg-white/15 rounded-full text-[11px] font-bold">Base URL: /api/v1</span>
-        <span class="px-2.5 py-1 bg-white/15 rounded-full text-[11px] font-bold">Auth: X-API-Key</span>
-        <span class="px-2.5 py-1 bg-white/15 rounded-full text-[11px] font-bold">Format: JSON</span>
+        <p class="text-sm leading-relaxed" style="color:#c9d1d9">Intégrez les recharges de jeux dans votre site ou application. Vous gérez vos prix, Direct API orchestre la livraison via les fournisseurs.</p>
+        <div class="flex flex-wrap gap-2 mt-4">
+          <span class="px-2.5 py-1 rounded-full text-[11px] font-bold code-font" style="background:rgba(255,255,255,0.07);color:#8b949e">Base URL: /api/v1</span>
+          <span class="px-2.5 py-1 rounded-full text-[11px] font-bold code-font" style="background:rgba(255,255,255,0.07);color:#8b949e">Auth: X-API-Key</span>
+          <span class="px-2.5 py-1 rounded-full text-[11px] font-bold code-font" style="background:rgba(255,255,255,0.07);color:#8b949e">Content-Type: application/json</span>
+        </div>
       </div>
     </section>
 
     <!-- ── Authentification ── -->
     <section class="space-y-3">
-      <div class="flex items-center gap-2">
-        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
-          <iconify-icon icon="lucide:key-round" class="text-base"></iconify-icon>
+      <div class="flex items-center gap-2.5">
+        <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background:rgba(210,168,255,0.15)">
+          <iconify-icon icon="lucide:key-round" style="color:#d2a8ff" class="text-sm"></iconify-icon>
         </div>
-        <h3 class="text-base font-bold text-slate-900">Authentification</h3>
+        <h2 class="text-sm font-bold text-white">Authentification</h2>
       </div>
-      <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm space-y-4">
-        <p class="text-sm text-slate-600 leading-relaxed">Chaque requête doit inclure votre clé API dans le header <code class="text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded text-xs font-mono">X-API-Key</code>. Retrouvez votre clé dans votre <a href="/profil" class="underline text-blue-600">profil</a>.</p>
-        <div class="relative group">
-          <div class="bg-slate-900 rounded-xl p-4 border border-slate-800">
-            <div class="flex justify-between items-center mb-2">
-              <span class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">HTTP Header</span>
-              <button @click="copyText('auth', 'X-API-Key: dk_live_votre_cle_api')"
-                class="copy-btn flex items-center gap-1 text-slate-400 hover:text-white text-xs transition-colors">
-                <iconify-icon :icon="copied['auth'] ? 'lucide:check' : 'lucide:copy'" :class="copied['auth'] ? 'text-emerald-400' : ''"></iconify-icon>
-                <span v-if="copied['auth']" class="text-emerald-400 text-[10px]">Copié</span>
+
+      <div class="rounded-2xl overflow-hidden glass">
+        <div class="p-4 space-y-3">
+          <p class="text-xs leading-relaxed" style="color:#8b949e">Ajoutez votre clé dans chaque requête via le header <code class="code-font px-1.5 py-0.5 rounded text-xs" style="background:rgba(210,168,255,0.15);color:#d2a8ff">X-API-Key</code>. Clé disponible dans votre <a href="/profil" class="text-orange-400 underline underline-offset-2">profil</a>.</p>
+          <!-- Code block -->
+          <div class="rounded-xl overflow-hidden" style="background:#010409; border:1px solid rgba(48,54,61,0.8)">
+            <div class="flex items-center justify-between px-4 py-2.5" style="background:rgba(22,27,34,0.8); border-bottom:1px solid rgba(48,54,61,0.5)">
+              <div class="flex items-center gap-2">
+                <div class="w-2.5 h-2.5 rounded-full bg-red-500/60"></div>
+                <div class="w-2.5 h-2.5 rounded-full bg-yellow-500/60"></div>
+                <div class="w-2.5 h-2.5 rounded-full bg-green-500/60"></div>
+              </div>
+              <span class="text-[10px] font-bold uppercase tracking-widest" style="color:#8b949e">HTTP Header</span>
+              <button @click="copy('auth','X-API-Key: dk_live_votre_cle_api')" class="flex items-center gap-1 text-xs transition-colors" :style="copied['auth'] ? 'color:#56d364' : 'color:#8b949e'">
+                <iconify-icon :icon="copied['auth'] ? 'lucide:check' : 'lucide:copy'" class="text-xs"></iconify-icon>
+                <span class="text-[10px]">{{ copied['auth'] ? 'Copié' : 'Copier' }}</span>
               </button>
             </div>
-            <pre class="code-block text-[13px] text-emerald-400 leading-tight">X-API-Key: dk_live_votre_cle_api</pre>
+            <pre class="code-font text-[13px] px-4 py-3 leading-relaxed"><span class="c-purple">X-API-Key</span><span class="c-gray">:</span> <span class="c-green">dk_live_votre_cle_api</span></pre>
           </div>
-        </div>
-        <div class="flex items-start gap-3 p-3 bg-amber-50 rounded-xl border border-amber-100">
-          <iconify-icon icon="lucide:shield-alert" class="text-amber-500 text-base shrink-0 mt-0.5"></iconify-icon>
-          <p class="text-xs text-amber-700 leading-relaxed">Ne partagez jamais votre clé API. En cas de compromission, régénérez-la depuis votre profil — l'ancienne est immédiatement révoquée.</p>
+          <!-- Warning -->
+          <div class="flex items-start gap-2.5 px-3 py-2.5 rounded-xl" style="background:rgba(240,136,62,0.1); border:1px solid rgba(240,136,62,0.2)">
+            <iconify-icon icon="lucide:shield-alert" class="text-orange-400 text-sm shrink-0 mt-0.5"></iconify-icon>
+            <p class="text-xs leading-relaxed" style="color:#c9936b">Ne partagez jamais votre clé. En cas de compromission, régénérez-la depuis votre profil — l'ancienne est immédiatement révoquée.</p>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- ── Sélecteur de services ── -->
+    <!-- ── Service selector ── -->
     <section class="space-y-4">
-      <div class="flex items-center gap-2">
-        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
-          <iconify-icon icon="lucide:layers" class="text-base"></iconify-icon>
+      <div class="flex items-center gap-2.5">
+        <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background:rgba(86,211,100,0.15)">
+          <iconify-icon icon="lucide:layers" style="color:#56d364" class="text-sm"></iconify-icon>
         </div>
-        <h3 class="text-base font-bold text-slate-900">Documentation par service</h3>
+        <h2 class="text-sm font-bold text-white">Documentation par service</h2>
       </div>
 
-      <!-- Loading services -->
+      <!-- Tabs -->
       <div v-if="loadingServices" class="flex gap-2">
-        <div class="h-10 w-28 bg-slate-100 rounded-xl animate-pulse"></div>
-        <div class="h-10 w-24 bg-slate-100 rounded-xl animate-pulse"></div>
+        <div class="h-9 w-36 rounded-xl animate-pulse" style="background:rgba(255,255,255,0.06)"></div>
       </div>
-
-      <!-- Service tabs -->
-      <div v-else class="flex gap-2 flex-wrap">
+      <div v-else class="flex flex-wrap gap-2">
         <button v-for="svc in services" :key="svc.id"
           @click="selectService(svc)"
-          :class="activeService?.id === svc.id ? 'tab-active shadow-lg shadow-blue-200' : 'tab-inactive hover:border-blue-200 hover:text-blue-600'"
-          class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-95">
-          <iconify-icon :icon="serviceIcon(svc.slug)" class="text-base"></iconify-icon>
+          :class="activeService?.id === svc.id ? 'tab-active' : 'tab-inactive hover:border-orange-500/40'"
+          class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95">
+          <iconify-icon icon="lucide:flame" class="text-sm"></iconify-icon>
           {{ svc.nom }}
         </button>
-        <div v-if="services.length === 0" class="text-sm text-slate-400 py-2">Aucun service disponible.</div>
+        <span v-if="!services.length" class="text-xs" style="color:#8b949e">Aucun service disponible.</span>
       </div>
 
-      <!-- ── Bloc de doc du service actif ── -->
-      <div v-if="activeService" class="space-y-5">
+      <!-- Doc block for active service -->
+      <div v-if="activeService" class="space-y-5 slide-up">
 
-        <!-- Bannière service -->
-        <div :class="'bg-gradient-to-br ' + serviceGradient(activeService.slug)" class="rounded-2xl p-5 text-white">
-          <div class="flex items-center gap-3 mb-2">
-            <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-              <iconify-icon :icon="serviceIcon(activeService.slug)" class="text-xl text-white"></iconify-icon>
-            </div>
-            <div>
-              <h4 class="font-bold text-lg leading-tight">{{ activeService.nom }}</h4>
-              <p v-if="activeService.description" class="text-white/70 text-xs mt-0.5">{{ activeService.description }}</p>
-            </div>
+        <!-- Service banner -->
+        <div class="rounded-2xl p-4 flex items-center gap-3" style="background:linear-gradient(135deg,rgba(249,115,22,0.18),rgba(239,68,68,0.12)); border:1px solid rgba(249,115,22,0.3)">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style="background:linear-gradient(135deg,#f97316,#ef4444)">
+            <iconify-icon icon="lucide:flame" class="text-white text-lg"></iconify-icon>
           </div>
-          <p class="text-white/80 text-sm leading-relaxed">Slug : <code class="bg-white/20 px-1.5 py-0.5 rounded font-mono text-xs">{{ activeService.slug }}</code></p>
+          <div>
+            <p class="font-bold text-white text-sm">{{ activeService.nom }}</p>
+            <p v-if="activeService.description" class="text-xs mt-0.5" style="color:#8b949e">{{ activeService.description }}</p>
+            <code class="text-[11px] code-font mt-1 block" style="color:#f97316">slug: {{ activeService.slug }}</code>
+          </div>
         </div>
 
-        <!-- Produits disponibles -->
-        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div class="px-5 py-4 border-b border-slate-50">
-            <div class="flex items-center gap-2">
-              <iconify-icon icon="lucide:package" class="text-slate-400 text-base"></iconify-icon>
-              <h4 class="text-sm font-bold text-slate-900">Produits disponibles</h4>
-            </div>
-            <p class="text-xs text-slate-400 mt-0.5">Utilisez l'<code class="font-mono text-blue-600">id</code> du produit dans vos commandes.</p>
+        <!-- Products table -->
+        <div class="rounded-2xl overflow-hidden glass">
+          <div class="px-4 py-3 flex items-center gap-2" style="border-bottom:1px solid rgba(48,54,61,0.5)">
+            <iconify-icon icon="lucide:package" style="color:#8b949e" class="text-sm"></iconify-icon>
+            <h3 class="text-xs font-bold text-white">Produits disponibles</h3>
+            <span class="ml-auto text-[10px] px-2 py-0.5 rounded-full font-bold code-font" style="background:rgba(249,115,22,0.15);color:#f97316">{{ products.length }} produits</span>
           </div>
-          <div v-if="loadingProducts" class="p-5 space-y-3">
-            <div v-for="i in 3" :key="i" class="h-12 bg-slate-50 rounded-xl animate-pulse"></div>
+          <div v-if="loadingProducts" class="p-4 space-y-2">
+            <div v-for="i in 4" :key="i" class="h-10 rounded-lg animate-pulse" style="background:rgba(255,255,255,0.04)"></div>
           </div>
-          <div v-else-if="products.length === 0" class="p-5 text-center">
-            <p class="text-sm text-slate-400">Aucun produit actif pour ce service.</p>
-          </div>
-          <div v-else class="divide-y divide-slate-50">
-            <div v-for="p in products" :key="p.id" class="px-5 py-3 flex items-start justify-between gap-3">
-              <div class="min-w-0">
-                <p class="text-sm font-bold text-slate-900 truncate">{{ p.nom }}</p>
-                <button @click="copyText('pid-'+p.id, p.id)"
-                  class="copy-btn flex items-center gap-1 text-[11px] text-slate-400 hover:text-blue-600 transition-colors mt-0.5">
-                  <code class="font-mono text-blue-600 truncate max-w-[200px]">{{ p.id }}</code>
-                  <iconify-icon :icon="copied['pid-'+p.id] ? 'lucide:check' : 'lucide:copy'" :class="copied['pid-'+p.id] ? 'text-emerald-500' : 'text-slate-300'" class="text-xs shrink-0"></iconify-icon>
+          <div v-else-if="!products.length" class="p-4 text-center text-xs" style="color:#8b949e">Aucun produit actif.</div>
+          <div v-else>
+            <div v-for="(p, i) in products" :key="p.id"
+              class="px-4 py-3 flex items-center gap-3 transition-colors hover:bg-white/[0.02]"
+              :style="i < products.length-1 ? 'border-bottom:1px solid rgba(48,54,61,0.4)' : ''">
+              <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(249,115,22,0.12)">
+                <iconify-icon icon="lucide:diamond" style="color:#f97316" class="text-xs"></iconify-icon>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-bold text-white truncate">{{ p.nom }}</p>
+                <button @click="copy('pid-'+p.id, p.id)" class="flex items-center gap-1 mt-0.5 transition-colors" :style="copied['pid-'+p.id] ? 'color:#56d364' : 'color:#8b949e'">
+                  <code class="text-[11px] code-font truncate max-w-[180px]">{{ p.id }}</code>
+                  <iconify-icon :icon="copied['pid-'+p.id] ? 'lucide:check' : 'lucide:copy'" class="text-[10px] shrink-0"></iconify-icon>
                 </button>
               </div>
-              <div class="shrink-0 text-right">
-                <span class="text-sm font-bold text-blue-700">{{ formatHTG(p.prix_vente_htg) }}</span>
-                <p class="text-[10px] text-slate-400">HTG</p>
+              <div class="text-right shrink-0">
+                <p class="text-sm font-bold text-orange-400">{{ formatHTG(p.prix_vente_htg) }}</p>
+                <p class="text-[10px]" style="color:#8b949e">HTG</p>
               </div>
             </div>
           </div>
         </div>
 
         <!-- ── POST /api/v1/orders ── -->
-        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div class="px-5 py-4 border-b border-slate-50 flex items-center gap-3">
-            <span class="bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded">POST</span>
-            <code class="text-xs font-mono text-slate-700">/api/v1/orders</code>
-            <span class="ml-auto text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded font-medium">Auth requis</span>
+        <div class="rounded-2xl overflow-hidden glass">
+          <!-- Endpoint header -->
+          <div class="px-4 py-3 flex items-center gap-2.5" style="background:rgba(22,27,34,0.8); border-bottom:1px solid rgba(48,54,61,0.5)">
+            <span class="badge-post text-[10px] font-bold px-2 py-0.5 rounded-lg shrink-0">POST</span>
+            <code class="text-xs code-font text-white flex-1">/api/v1/orders</code>
+            <span class="text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0" style="background:rgba(210,168,255,0.12);color:#d2a8ff">X-API-Key</span>
           </div>
-          <div class="p-5 space-y-6">
 
+          <div class="p-4 space-y-5">
+            <!-- Headers -->
             <div>
-              <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Headers</h4>
+              <p class="text-[10px] font-bold uppercase tracking-widest mb-2.5" style="color:#8b949e">Headers requis</p>
+              <div class="rounded-xl overflow-hidden" style="background:#010409; border:1px solid rgba(48,54,61,0.7)">
+                <div class="flex items-center justify-between px-3 py-2" style="border-bottom:1px solid rgba(48,54,61,0.5)">
+                  <span class="text-[10px] font-bold uppercase tracking-widest" style="color:#8b949e">HTTP</span>
+                </div>
+                <pre class="code-font text-[12px] px-3 py-3 leading-loose"><span class="c-purple">X-API-Key</span><span class="c-gray">:</span>      <span class="c-green">dk_live_votre_cle_api</span>
+<span class="c-purple">Content-Type</span><span class="c-gray">:</span>  <span class="c-str">application/json</span></pre>
+              </div>
+            </div>
+
+            <!-- Body params -->
+            <div>
+              <p class="text-[10px] font-bold uppercase tracking-widest mb-2.5" style="color:#8b949e">Body JSON</p>
               <div class="space-y-2">
-                <div class="flex items-center justify-between py-2 border-b border-slate-50">
-                  <div><code class="text-sm font-mono font-bold text-slate-900">X-API-Key</code><span class="ml-2 text-[10px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded font-bold">requis</span></div>
-                  <span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-mono">String</span>
+                <div class="flex items-start gap-3 px-3 py-2.5 rounded-xl" style="background:rgba(255,255,255,0.03); border:1px solid rgba(48,54,61,0.4)">
+                  <code class="text-xs code-font font-bold text-white shrink-0">product_id</code>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0" style="background:rgba(248,81,73,0.15);color:#f85149">requis</span>
+                  <p class="text-xs flex-1" style="color:#8b949e">UUID du produit (tableau ci-dessus)</p>
+                  <code class="text-[10px] code-font shrink-0" style="color:#d2a8ff">UUID</code>
                 </div>
-                <div class="flex items-center justify-between py-2">
-                  <code class="text-sm font-mono font-bold text-slate-900">Content-Type</code>
-                  <code class="text-[11px] text-slate-500 font-mono">application/json</code>
+                <div class="flex items-start gap-3 px-3 py-2.5 rounded-xl" style="background:rgba(255,255,255,0.03); border:1px solid rgba(48,54,61,0.4)">
+                  <code class="text-xs code-font font-bold text-white shrink-0">params</code>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0" style="background:rgba(255,255,255,0.07);color:#8b949e">objet</span>
+                  <p class="text-xs flex-1" style="color:#8b949e">Paramètres spécifiques au service</p>
+                  <code class="text-[10px] code-font shrink-0" style="color:#d2a8ff">Object</code>
                 </div>
               </div>
             </div>
 
+            <!-- Free Fire params -->
+            <div v-if="activeService.slug === 'free-fire'" class="rounded-xl overflow-hidden" style="background:rgba(249,115,22,0.07); border:1px solid rgba(249,115,22,0.25)">
+              <div class="px-4 py-2.5 flex items-center gap-2" style="border-bottom:1px solid rgba(249,115,22,0.15)">
+                <iconify-icon icon="lucide:flame" class="text-orange-400 text-sm"></iconify-icon>
+                <span class="text-[11px] font-bold text-orange-400">Params — Free Fire LATAM</span>
+              </div>
+              <div class="p-4 space-y-3">
+                <div class="flex items-start gap-3">
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2">
+                      <code class="text-xs code-font font-bold text-white">params.player_id</code>
+                      <span class="text-[10px] px-1.5 py-0.5 rounded font-bold" style="background:rgba(248,81,73,0.15);color:#f85149">requis</span>
+                    </div>
+                    <p class="text-xs mt-1" style="color:#8b949e">ID numérique du compte Free Fire. Visible dans le jeu → Profil, sous le pseudo.</p>
+                    <div class="mt-1.5 flex items-center gap-1.5">
+                      <iconify-icon icon="lucide:lightbulb" class="text-yellow-400 text-xs"></iconify-icon>
+                      <span class="text-[11px]" style="color:#8b949e">Ex&nbsp;: <code class="code-font text-orange-300">123456789</code></span>
+                    </div>
+                  </div>
+                  <code class="text-[10px] code-font shrink-0 mt-1" style="color:#d2a8ff">String</code>
+                </div>
+                <div class="pt-3 mt-1" style="border-top:1px solid rgba(249,115,22,0.15)">
+                  <p class="text-[11px] leading-relaxed" style="color:#c9936b">
+                    <iconify-icon icon="lucide:info" class="mr-1 text-orange-400"></iconify-icon>
+                    L'ID est vérifié en temps réel avant débit. Si l'ID est invalide → erreur 422, aucun montant prélevé.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Request example -->
             <div>
-              <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Body (JSON)</h4>
-              <div class="space-y-3">
-                <div class="flex items-start justify-between gap-3 py-2 border-b border-slate-50">
-                  <div>
-                    <code class="text-sm font-mono font-bold text-slate-900">product_id</code>
-                    <span class="ml-2 text-[10px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded font-bold">requis</span>
-                    <p class="text-xs text-slate-500 mt-1">UUID du produit (voir tableau ci-dessus).</p>
+              <p class="text-[10px] font-bold uppercase tracking-widest mb-2.5" style="color:#8b949e">Exemple de requête</p>
+              <div class="rounded-xl overflow-hidden" style="background:#010409; border:1px solid rgba(48,54,61,0.7)">
+                <div class="flex items-center justify-between px-3 py-2" style="background:rgba(22,27,34,0.8); border-bottom:1px solid rgba(48,54,61,0.5)">
+                  <div class="flex items-center gap-1.5">
+                    <div class="w-2 h-2 rounded-full bg-red-500/50"></div>
+                    <div class="w-2 h-2 rounded-full bg-yellow-500/50"></div>
+                    <div class="w-2 h-2 rounded-full bg-green-500/50"></div>
                   </div>
-                  <span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-mono shrink-0">UUID</span>
-                </div>
-                <div class="flex items-start justify-between gap-3 py-2">
-                  <div>
-                    <code class="text-sm font-mono font-bold text-slate-900">params</code>
-                    <span class="ml-2 text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold">objet</span>
-                    <p class="text-xs text-slate-500 mt-1">Paramètres propres au service (voir section dédiée ci-dessous).</p>
-                  </div>
-                  <span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-mono shrink-0">Object</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Params spécifiques Free Fire -->
-            <div v-if="activeService.slug === 'free-fire'" class="bg-orange-50 rounded-xl p-4 border border-orange-100">
-              <div class="flex items-center gap-2 mb-3">
-                <iconify-icon icon="lucide:flame" class="text-orange-500 text-base"></iconify-icon>
-                <h4 class="text-xs font-bold text-orange-800">Paramètres spécifiques — Free Fire</h4>
-              </div>
-              <div class="space-y-3">
-                <div class="flex items-start justify-between gap-3">
-                  <div>
-                    <code class="text-sm font-mono font-bold text-slate-900">params.player_id</code>
-                    <span class="ml-2 text-[10px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded font-bold">requis</span>
-                    <p class="text-xs text-slate-500 mt-1">ID numérique du compte Free Fire (ex&nbsp;: <code class="font-mono">123456789</code>). Visible dans le jeu → Profil.</p>
-                  </div>
-                  <span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-mono shrink-0">String</span>
-                </div>
-                <div class="flex items-start justify-between gap-3 pt-3 border-t border-orange-100">
-                  <div>
-                    <code class="text-sm font-mono font-bold text-slate-900">params.server</code>
-                    <span class="ml-2 text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold">optionnel</span>
-                    <p class="text-xs text-slate-500 mt-1">Code région (ex&nbsp;: <code class="font-mono">IND</code>, <code class="font-mono">BR</code>, <code class="font-mono">ME</code>). Omettez pour la version mondiale.</p>
-                  </div>
-                  <span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-mono shrink-0">String</span>
-                </div>
-              </div>
-              <div class="mt-3 pt-3 border-t border-orange-100">
-                <p class="text-[11px] text-orange-700 leading-relaxed"><iconify-icon icon="lucide:info" class="mr-1"></iconify-icon>L'ID joueur est validé en temps réel avant débit. Si l'ID est invalide, aucun montant n'est prélevé.</p>
-              </div>
-            </div>
-
-            <!-- Exemple JSON -->
-            <div>
-              <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Exemple de requête (JSON)</h4>
-              <div class="bg-slate-900 rounded-xl p-4 border border-slate-800">
-                <div class="flex justify-between items-center mb-3">
-                  <span class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">JSON Body</span>
-                  <button @click="copyText('json-order', jsonOrder())"
-                    class="copy-btn flex items-center gap-1 text-slate-400 hover:text-white text-xs transition-colors">
-                    <iconify-icon :icon="copied['json-order'] ? 'lucide:check' : 'lucide:copy'" :class="copied['json-order'] ? 'text-emerald-400' : ''"></iconify-icon>
-                    <span class="text-[10px]" :class="copied['json-order'] ? 'text-emerald-400' : ''">{{ copied['json-order'] ? 'Copié !' : 'Copier' }}</span>
+                  <span class="text-[10px] font-bold uppercase tracking-widest" style="color:#8b949e">JSON Body</span>
+                  <button @click="copy('json-req', bodyExample())" class="flex items-center gap-1 text-xs transition-colors" :style="copied['json-req'] ? 'color:#56d364' : 'color:#8b949e'">
+                    <iconify-icon :icon="copied['json-req'] ? 'lucide:check' : 'lucide:copy'" class="text-xs"></iconify-icon>
+                    <span class="text-[10px]">{{ copied['json-req'] ? 'Copié !' : 'Copier' }}</span>
                   </button>
                 </div>
-                <pre class="code-block text-[12px] text-blue-300 leading-relaxed no-scrollbar">{{ jsonOrder() }}</pre>
+                <pre class="code-font text-[12px] px-4 py-4 leading-relaxed no-scrollbar"><span class="c-gray">{</span>
+  <span class="c-key">"product_id"</span><span class="c-gray">:</span> <span class="c-str">"{{ firstId() }}"</span><span class="c-gray">,</span>
+  <span class="c-key">"params"</span><span class="c-gray">: {</span><span v-if="activeService.slug === 'free-fire'">
+    <span class="c-key">"player_id"</span><span class="c-gray">:</span> <span class="c-str">"123456789"</span>
+  </span><span class="c-gray">}
+}</span></pre>
               </div>
             </div>
 
-            <!-- Réponses -->
+            <!-- Responses -->
             <div class="space-y-3">
-              <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Réponses</h4>
+              <p class="text-[10px] font-bold uppercase tracking-widest" style="color:#8b949e">Réponses</p>
 
+              <!-- 200 -->
               <div>
-                <div class="flex items-center gap-2 mb-2">
-                  <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                  <span class="text-xs font-bold text-slate-700">200 — Succès</span>
+                <div class="flex items-center gap-2 mb-1.5">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
+                  <span class="text-xs font-bold text-white">200 — Succès</span>
                 </div>
-                <div class="bg-emerald-950/40 rounded-xl p-4 border border-emerald-900/20">
-                  <pre class="code-block text-[12px] text-emerald-400 leading-relaxed no-scrollbar">{
-  "ok": true,
-  "commande_id": "uuid-commande",
-  "status": "success",
-  "ref_fournisseur": "FZ-88291"
-}</pre>
+                <div class="rounded-xl overflow-hidden" style="background:#010409; border:1px solid rgba(86,211,100,0.2)">
+                  <pre class="code-font text-[12px] px-4 py-3 leading-relaxed no-scrollbar"><span class="c-gray">{</span>
+  <span class="c-key">"ok"</span><span class="c-gray">:</span> <span class="c-val">true</span><span class="c-gray">,</span>
+  <span class="c-key">"commande_id"</span><span class="c-gray">:</span> <span class="c-str">"uuid-commande"</span><span class="c-gray">,</span>
+  <span class="c-key">"status"</span><span class="c-gray">:</span> <span class="c-green">"success"</span><span class="c-gray">,</span>
+  <span class="c-key">"ref_fournisseur"</span><span class="c-gray">:</span> <span class="c-str">"FZ-88291"</span>
+<span class="c-gray">}</span></pre>
                 </div>
               </div>
 
+              <!-- 402 -->
               <div>
-                <div class="flex items-center gap-2 mb-2">
-                  <span class="w-2 h-2 rounded-full bg-red-500"></span>
-                  <span class="text-xs font-bold text-slate-700">402 — Solde insuffisant</span>
+                <div class="flex items-center gap-2 mb-1.5">
+                  <span class="w-2 h-2 rounded-full bg-yellow-400 shrink-0"></span>
+                  <span class="text-xs font-bold text-white">402 — Solde insuffisant</span>
                 </div>
-                <div class="bg-red-950/30 rounded-xl p-4 border border-red-900/20">
-                  <pre class="code-block text-[12px] text-red-400 leading-relaxed no-scrollbar">{
-  "ok": false,
-  "error": "Solde insuffisant.",
-  "solde_htg": "85.00",
-  "requis_htg": "160.00"
-}</pre>
+                <div class="rounded-xl overflow-hidden" style="background:#010409; border:1px solid rgba(234,179,8,0.2)">
+                  <pre class="code-font text-[12px] px-4 py-3 leading-relaxed no-scrollbar"><span class="c-gray">{</span>
+  <span class="c-key">"ok"</span><span class="c-gray">:</span> <span class="c-val">false</span><span class="c-gray">,</span>
+  <span class="c-key">"error"</span><span class="c-gray">:</span> <span class="c-red">"Solde insuffisant."</span><span class="c-gray">,</span>
+  <span class="c-key">"solde_htg"</span><span class="c-gray">:</span> <span class="c-orange">"85.00"</span><span class="c-gray">,</span>
+  <span class="c-key">"requis_htg"</span><span class="c-gray">:</span> <span class="c-orange">"160.00"</span>
+<span class="c-gray">}</span></pre>
                 </div>
               </div>
 
+              <!-- 502 -->
               <div>
-                <div class="flex items-center gap-2 mb-2">
-                  <span class="w-2 h-2 rounded-full bg-orange-500"></span>
-                  <span class="text-xs font-bold text-slate-700">502 — Échec fournisseur (remboursement auto)</span>
+                <div class="flex items-center gap-2 mb-1.5">
+                  <span class="w-2 h-2 rounded-full bg-red-400 shrink-0"></span>
+                  <span class="text-xs font-bold text-white">502 — Échec fournisseur <span style="color:#8b949e;font-weight:400">(remboursement auto)</span></span>
                 </div>
-                <div class="bg-orange-950/30 rounded-xl p-4 border border-orange-900/20">
-                  <pre class="code-block text-[12px] text-orange-300 leading-relaxed no-scrollbar">{
-  "ok": false,
-  "error": "La commande a échoué. Votre solde a été remboursé.",
-  "commande_id": "uuid-commande",
-  "status": "refunded"
-}</pre>
+                <div class="rounded-xl overflow-hidden" style="background:#010409; border:1px solid rgba(248,81,73,0.2)">
+                  <pre class="code-font text-[12px] px-4 py-3 leading-relaxed no-scrollbar"><span class="c-gray">{</span>
+  <span class="c-key">"ok"</span><span class="c-gray">:</span> <span class="c-val">false</span><span class="c-gray">,</span>
+  <span class="c-key">"error"</span><span class="c-gray">:</span> <span class="c-red">"La commande a échoué. Solde remboursé."</span><span class="c-gray">,</span>
+  <span class="c-key">"commande_id"</span><span class="c-gray">:</span> <span class="c-str">"uuid-commande"</span><span class="c-gray">,</span>
+  <span class="c-key">"status"</span><span class="c-gray">:</span> <span class="c-red">"refunded"</span>
+<span class="c-gray">}</span></pre>
                 </div>
               </div>
             </div>
@@ -400,105 +416,112 @@
         </div>
 
         <!-- ── GET /api/v1/orders/:id ── -->
-        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div class="px-5 py-4 border-b border-slate-50 flex items-center gap-3">
-            <span class="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded">GET</span>
-            <code class="text-xs font-mono text-slate-700">/api/v1/orders/:id</code>
+        <div class="rounded-2xl overflow-hidden glass">
+          <div class="px-4 py-3 flex items-center gap-2.5" style="background:rgba(22,27,34,0.8); border-bottom:1px solid rgba(48,54,61,0.5)">
+            <span class="badge-get text-[10px] font-bold px-2 py-0.5 rounded-lg shrink-0">GET</span>
+            <code class="text-xs code-font text-white">/api/v1/orders/:id</code>
           </div>
-          <div class="p-5 space-y-4">
-            <p class="text-sm text-slate-600">Récupère le statut et les détails d'une commande par son UUID.</p>
+          <div class="p-4 space-y-4">
+            <p class="text-xs leading-relaxed" style="color:#8b949e">Récupère le statut et les détails d'une commande. Accessible avec session ou clé API.</p>
             <div>
-              <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Réponse</h4>
-              <div class="bg-slate-900 rounded-xl p-4 border border-slate-800">
-                <pre class="code-block text-[12px] text-blue-300 leading-relaxed no-scrollbar">{
-  "ok": true,
-  "commande": {
-    "id": "uuid-commande",
-    "status": "success",
-    "service": "Free Fire",
-    "produit": "Free Fire — 520 Diamants",
-    "ref_fournisseur": "FZ-88291",
-    "montant_htg": "160.00",
-    "created_at": "2026-07-26T15:30:00.000Z"
-  }
-}</pre>
+              <p class="text-[10px] font-bold uppercase tracking-widest mb-2" style="color:#8b949e">Réponse — 200 OK</p>
+              <div class="rounded-xl overflow-hidden" style="background:#010409; border:1px solid rgba(48,54,61,0.7)">
+                <pre class="code-font text-[12px] px-4 py-3 leading-relaxed no-scrollbar"><span class="c-gray">{</span>
+  <span class="c-key">"ok"</span><span class="c-gray">:</span> <span class="c-val">true</span><span class="c-gray">,</span>
+  <span class="c-key">"commande"</span><span class="c-gray">: {</span>
+    <span class="c-key">"id"</span><span class="c-gray">:</span>              <span class="c-str">"uuid-commande"</span><span class="c-gray">,</span>
+    <span class="c-key">"status"</span><span class="c-gray">:</span>          <span class="c-green">"success"</span><span class="c-gray">,</span>
+    <span class="c-key">"service"</span><span class="c-gray">:</span>         <span class="c-str">"Free Fire LATAM"</span><span class="c-gray">,</span>
+    <span class="c-key">"produit"</span><span class="c-gray">:</span>         <span class="c-str">"Free Fire — 520 Diamants"</span><span class="c-gray">,</span>
+    <span class="c-key">"ref_fournisseur"</span><span class="c-gray">:</span> <span class="c-str">"FZ-88291"</span><span class="c-gray">,</span>
+    <span class="c-key">"montant_htg"</span><span class="c-gray">:</span>     <span class="c-orange">"160.00"</span><span class="c-gray">,</span>
+    <span class="c-key">"created_at"</span><span class="c-gray">:</span>      <span class="c-str">"2026-07-26T15:30:00.000Z"</span>
+  <span class="c-gray">}
+}</span></pre>
               </div>
             </div>
+            <!-- Status values -->
             <div>
-              <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Valeurs possibles de <code class="font-mono text-blue-600 normal-case">status</code></h4>
+              <p class="text-[10px] font-bold uppercase tracking-widest mb-2" style="color:#8b949e">Valeurs de <code class="code-font normal-case" style="color:#79c0ff">status</code></p>
               <div class="grid grid-cols-3 gap-2">
-                <div class="p-2.5 bg-amber-50 rounded-xl border border-amber-100 text-center">
-                  <span class="text-[11px] font-bold text-amber-700 font-mono">reserved</span>
-                  <p class="text-[10px] text-amber-600 mt-1">En attente fournisseur</p>
+                <div class="rounded-xl p-3 text-center" style="background:rgba(234,179,8,0.08); border:1px solid rgba(234,179,8,0.2)">
+                  <code class="text-[11px] font-bold code-font text-yellow-400">reserved</code>
+                  <p class="text-[10px] mt-1" style="color:#8b949e">En attente</p>
                 </div>
-                <div class="p-2.5 bg-emerald-50 rounded-xl border border-emerald-100 text-center">
-                  <span class="text-[11px] font-bold text-emerald-700 font-mono">success</span>
-                  <p class="text-[10px] text-emerald-600 mt-1">Recharge livrée</p>
+                <div class="rounded-xl p-3 text-center" style="background:rgba(86,211,100,0.08); border:1px solid rgba(86,211,100,0.2)">
+                  <code class="text-[11px] font-bold code-font text-emerald-400">success</code>
+                  <p class="text-[10px] mt-1" style="color:#8b949e">Livré</p>
                 </div>
-                <div class="p-2.5 bg-red-50 rounded-xl border border-red-100 text-center">
-                  <span class="text-[11px] font-bold text-red-700 font-mono">refunded</span>
-                  <p class="text-[10px] text-red-600 mt-1">Remboursé auto.</p>
+                <div class="rounded-xl p-3 text-center" style="background:rgba(248,81,73,0.08); border:1px solid rgba(248,81,73,0.2)">
+                  <code class="text-[11px] font-bold code-font text-red-400">refunded</code>
+                  <p class="text-[10px] mt-1" style="color:#8b949e">Remboursé</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- ── Exemple complet curl ── -->
+        <!-- ── Code examples ── -->
         <div class="space-y-3">
-          <div class="flex items-center gap-2">
-            <div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300">
-              <iconify-icon icon="lucide:terminal" class="text-base"></iconify-icon>
+          <div class="flex items-center gap-2.5">
+            <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background:rgba(139,148,158,0.12)">
+              <iconify-icon icon="lucide:terminal" style="color:#8b949e" class="text-sm"></iconify-icon>
             </div>
-            <h3 class="text-base font-bold text-slate-900">Exemple complet</h3>
+            <h2 class="text-sm font-bold text-white">Exemples complets</h2>
           </div>
 
           <!-- cURL -->
-          <div class="bg-slate-900 rounded-2xl p-5 border border-slate-800 space-y-4">
-            <div class="flex items-center justify-between">
-              <span class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">cURL</span>
-              <button @click="copyText('curl-full', `curl -X POST https://votre-domaine.com/api/v1/orders -H 'X-API-Key: dk_live_votre_cle_api' -H 'Content-Type: application/json' -d '${jsonOrder().replace(/\n/g,' ')}'`)"
-                class="copy-btn flex items-center gap-1 text-slate-400 hover:text-white text-xs transition-colors">
-                <iconify-icon :icon="copied['curl-full'] ? 'lucide:check' : 'lucide:copy'" :class="copied['curl-full'] ? 'text-emerald-400' : ''"></iconify-icon>
-                <span class="text-[10px]" :class="copied['curl-full'] ? 'text-emerald-400' : ''">{{ copied['curl-full'] ? 'Copié !' : 'Copier' }}</span>
+          <div class="rounded-2xl overflow-hidden glass">
+            <div class="flex items-center justify-between px-4 py-2.5" style="background:rgba(22,27,34,0.8); border-bottom:1px solid rgba(48,54,61,0.5)">
+              <div class="flex items-center gap-2">
+                <iconify-icon icon="lucide:terminal" style="color:#8b949e" class="text-xs"></iconify-icon>
+                <span class="text-[10px] font-bold uppercase tracking-widest" style="color:#8b949e">cURL</span>
+              </div>
+              <button @click="copy('curl-ex', `curl -X POST https://votre-app.com/api/v1/orders -H 'X-API-Key: dk_live_xxx' -H 'Content-Type: application/json' -d '{\"product_id\":\"${firstId()}\",\"params\":{\"player_id\":\"123456789\"}}'`)" class="flex items-center gap-1 transition-colors" :style="copied['curl-ex'] ? 'color:#56d364' : 'color:#8b949e'">
+                <iconify-icon :icon="copied['curl-ex'] ? 'lucide:check' : 'lucide:copy'" class="text-xs"></iconify-icon>
+                <span class="text-[10px]">{{ copied['curl-ex'] ? 'Copié !' : 'Copier' }}</span>
               </button>
             </div>
-            <pre class="code-block text-[12px] leading-relaxed no-scrollbar"><span class="text-slate-400"># 1. Passer une commande</span>
-<span class="text-emerald-400">curl</span> <span class="text-blue-300">-X POST</span> https://votre-domaine.com/api/v1/orders <span class="text-yellow-300">\</span>
-  <span class="text-blue-300">-H</span> <span class="text-orange-300">"X-API-Key: dk_live_votre_cle_api"</span> <span class="text-yellow-300">\</span>
-  <span class="text-blue-300">-H</span> <span class="text-orange-300">"Content-Type: application/json"</span> <span class="text-yellow-300">\</span>
-  <span class="text-blue-300">-d</span> <span class="text-orange-300">'{{ jsonOrder().replace(/\n/g, " ") }}'</span>
+            <pre class="code-font text-[12px] px-4 py-4 leading-loose no-scrollbar" style="background:#010409"><span class="c-gray"># Passer une commande</span>
+<span class="c-green">curl</span> <span class="c-purple">-X POST</span> https://votre-app.com/api/v1/orders \
+  <span class="c-purple">-H</span> <span class="c-str">"X-API-Key: dk_live_votre_cle"</span> \
+  <span class="c-purple">-H</span> <span class="c-str">"Content-Type: application/json"</span> \
+  <span class="c-purple">-d</span> <span class="c-str">'{</span>
+    <span class="c-str">"product_id"</span>: <span class="c-str">"{{ firstId() }}"</span><span class="c-gray">,</span>
+    <span class="c-str">"params"</span>: <span class="c-gray">{</span> <span class="c-str">"player_id"</span>: <span class="c-str">"123456789"</span> <span class="c-gray">}</span>
+  <span class="c-str">}'</span>
 
-<span class="text-slate-400"># 2. Vérifier le statut</span>
-<span class="text-emerald-400">curl</span> https://votre-domaine.com/api/v1/orders/UUID_COMMANDE <span class="text-yellow-300">\</span>
-  <span class="text-blue-300">-H</span> <span class="text-orange-300">"X-API-Key: dk_live_votre_cle_api"</span></pre>
+<span class="c-gray"># Vérifier le statut</span>
+<span class="c-green">curl</span> https://votre-app.com/api/v1/orders/<span class="c-orange">UUID_COMMANDE</span> \
+  <span class="c-purple">-H</span> <span class="c-str">"X-API-Key: dk_live_votre_cle"</span></pre>
           </div>
 
-          <!-- JavaScript fetch -->
-          <div class="bg-slate-900 rounded-2xl p-5 border border-slate-800 space-y-4">
-            <div class="flex items-center justify-between">
-              <span class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">JavaScript (fetch)</span>
-              <button @click="copyText('js-full', 'const res = await fetch(...)')"
-                class="copy-btn flex items-center gap-1 text-slate-400 hover:text-white text-xs transition-colors">
-                <iconify-icon icon="lucide:copy" class="text-xs"></iconify-icon>
-              </button>
+          <!-- JavaScript -->
+          <div class="rounded-2xl overflow-hidden glass">
+            <div class="flex items-center justify-between px-4 py-2.5" style="background:rgba(22,27,34,0.8); border-bottom:1px solid rgba(48,54,61,0.5)">
+              <div class="flex items-center gap-2">
+                <iconify-icon icon="lucide:code" style="color:#f0db4f" class="text-xs"></iconify-icon>
+                <span class="text-[10px] font-bold uppercase tracking-widest" style="color:#8b949e">JavaScript (fetch)</span>
+              </div>
             </div>
-            <pre class="code-block text-[12px] leading-relaxed no-scrollbar"><span class="text-blue-300">const</span> <span class="text-white">res</span> <span class="text-slate-400">=</span> <span class="text-blue-300">await</span> <span class="text-yellow-300">fetch</span>(<span class="text-orange-300">'/api/v1/orders'</span>, {
-  method: <span class="text-orange-300">'POST'</span>,
-  headers: {
-    <span class="text-orange-300">'X-API-Key'</span>:      <span class="text-orange-300">'dk_live_votre_cle_api'</span>,
-    <span class="text-orange-300">'Content-Type'</span>:  <span class="text-orange-300">'application/json'</span>,
+            <pre class="code-font text-[12px] px-4 py-4 leading-loose no-scrollbar" style="background:#010409"><span class="c-purple">const</span> <span class="c-white">res</span> <span class="c-gray">=</span> <span class="c-purple">await</span> <span class="c-val">fetch</span>(<span class="c-str">'/api/v1/orders'</span>, {
+  method<span class="c-gray">:</span> <span class="c-str">'POST'</span>,
+  headers<span class="c-gray">:</span> {
+    <span class="c-str">'X-API-Key'</span><span class="c-gray">:</span>     <span class="c-str">'dk_live_votre_cle'</span>,
+    <span class="c-str">'Content-Type'</span><span class="c-gray">:</span> <span class="c-str">'application/json'</span>,
   },
-  body: <span class="text-blue-300">JSON</span>.<span class="text-yellow-300">stringify</span>({
-    product_id: <span class="text-orange-300">'{{ firstProductId() }}'</span>,<span v-if="activeService?.slug === 'free-fire'">
-    params: { player_id: <span class="text-orange-300">'123456789'</span>, server: <span class="text-orange-300">'IND'</span> },</span>
+  body<span class="c-gray">:</span> <span class="c-purple">JSON</span>.<span class="c-val">stringify</span>({
+    product_id<span class="c-gray">:</span> <span class="c-str">'{{ firstId() }}'</span>,
+    params<span class="c-gray">:</span>     { player_id<span class="c-gray">:</span> <span class="c-str">'123456789'</span> },
   }),
 });
-<span class="text-blue-300">const</span> <span class="text-white">data</span> <span class="text-slate-400">=</span> <span class="text-blue-300">await</span> res.<span class="text-yellow-300">json</span>();
-<span class="text-blue-300">if</span> (data.ok) {
-  console.<span class="text-yellow-300">log</span>(<span class="text-orange-300">'Commande réussie'</span>, data.commande_id);
-} <span class="text-blue-300">else</span> {
-  console.<span class="text-yellow-300">error</span>(<span class="text-orange-300">'Erreur'</span>, data.error);
+
+<span class="c-purple">const</span> <span class="c-white">data</span> <span class="c-gray">=</span> <span class="c-purple">await</span> res.<span class="c-val">json</span>();
+
+<span class="c-purple">if</span> (data.ok) {
+  console.<span class="c-val">log</span>(<span class="c-green">'✓ Commande réussie'</span>, data.commande_id);
+} <span class="c-purple">else</span> {
+  console.<span class="c-val">error</span>(<span class="c-red">'✗ Erreur'</span>, data.error);
 }</pre>
           </div>
         </div>
@@ -506,126 +529,70 @@
       </div>
     </section>
 
-    <!-- ── Codes d'erreur globaux ── -->
+    <!-- ── Error codes ── -->
     <section class="space-y-3">
-      <div class="flex items-center gap-2">
-        <div class="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-red-500">
-          <iconify-icon icon="lucide:alert-circle" class="text-base"></iconify-icon>
+      <div class="flex items-center gap-2.5">
+        <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background:rgba(248,81,73,0.15)">
+          <iconify-icon icon="lucide:alert-circle" style="color:#f85149" class="text-sm"></iconify-icon>
         </div>
-        <h3 class="text-base font-bold text-slate-900">Codes d'erreur</h3>
+        <h2 class="text-sm font-bold text-white">Codes d'erreur</h2>
       </div>
-      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm divide-y divide-slate-50">
-        <div class="flex items-start gap-3 p-4">
-          <span class="text-sm font-bold text-slate-900 font-mono w-8 shrink-0">400</span>
+
+      <div class="rounded-2xl overflow-hidden glass">
+        <div v-for="(err, i) in [
+          {code:'400',label:'Bad Request',desc:'Paramètre manquant ou invalide.',color:'#8b949e'},
+          {code:'401',label:'Unauthorized',desc:'Clé API manquante, invalide ou compte suspendu.',color:'#f85149'},
+          {code:'402',label:'Payment Required',desc:'Solde wallet insuffisant pour ce produit.',color:'#ffa657'},
+          {code:'404',label:'Not Found',desc:'Produit introuvable ou inactif.',color:'#8b949e'},
+          {code:'422',label:'Unprocessable',desc:'ID joueur invalide ou param rejeté par le fournisseur.',color:'#d2a8ff'},
+          {code:'429',label:'Too Many Requests',desc:'Limite atteinte : 60 commandes/minute.',color:'#ffa657'},
+          {code:'502',label:'Provider Error',desc:'Fournisseur en échec — remboursement automatique déclenché.',color:'#f85149'},
+        ]" :key="err.code"
+          class="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-white/[0.02]"
+          :style="i < 6 ? 'border-bottom:1px solid rgba(48,54,61,0.4)' : ''">
+          <code class="code-font text-xs font-bold w-8 shrink-0 mt-0.5" :style="'color:'+err.color">{{ err.code }}</code>
           <div>
-            <p class="text-sm font-bold text-slate-800">Bad Request</p>
-            <p class="text-xs text-slate-500">Paramètre manquant ou invalide (ex : product_id absent).</p>
-          </div>
-        </div>
-        <div class="flex items-start gap-3 p-4">
-          <span class="text-sm font-bold text-slate-900 font-mono w-8 shrink-0">401</span>
-          <div>
-            <p class="text-sm font-bold text-slate-800">Unauthorized</p>
-            <p class="text-xs text-slate-500">Clé API manquante, invalide ou compte suspendu.</p>
-          </div>
-        </div>
-        <div class="flex items-start gap-3 p-4">
-          <span class="text-sm font-bold text-slate-900 font-mono w-8 shrink-0">402</span>
-          <div>
-            <p class="text-sm font-bold text-slate-800">Payment Required</p>
-            <p class="text-xs text-slate-500">Solde wallet insuffisant pour ce produit.</p>
-          </div>
-        </div>
-        <div class="flex items-start gap-3 p-4">
-          <span class="text-sm font-bold text-slate-900 font-mono w-8 shrink-0">404</span>
-          <div>
-            <p class="text-sm font-bold text-slate-800">Not Found</p>
-            <p class="text-xs text-slate-500">Produit introuvable ou inactif.</p>
-          </div>
-        </div>
-        <div class="flex items-start gap-3 p-4">
-          <span class="text-sm font-bold text-slate-900 font-mono w-8 shrink-0">422</span>
-          <div>
-            <p class="text-sm font-bold text-slate-800">Unprocessable Entity</p>
-            <p class="text-xs text-slate-500">ID joueur invalide ou paramètre rejeté par le fournisseur.</p>
-          </div>
-        </div>
-        <div class="flex items-start gap-3 p-4">
-          <span class="text-sm font-bold text-slate-900 font-mono w-8 shrink-0">429</span>
-          <div>
-            <p class="text-sm font-bold text-slate-800">Too Many Requests</p>
-            <p class="text-xs text-slate-500">Limite atteinte : 60 commandes/minute par compte.</p>
-          </div>
-        </div>
-        <div class="flex items-start gap-3 p-4">
-          <span class="text-sm font-bold text-slate-900 font-mono w-8 shrink-0">502</span>
-          <div>
-            <p class="text-sm font-bold text-slate-800">Provider Error (remboursement auto)</p>
-            <p class="text-xs text-slate-500">Le fournisseur a échoué. Votre solde est automatiquement remboursé.</p>
+            <p class="text-xs font-bold text-white">{{ err.label }}</p>
+            <p class="text-xs mt-0.5" style="color:#8b949e">{{ err.desc }}</p>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- ── Flux complet ── -->
+    <!-- ── Order flow ── -->
     <section class="space-y-3 pb-4">
-      <div class="flex items-center gap-2">
-        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
-          <iconify-icon icon="lucide:git-branch" class="text-base"></iconify-icon>
+      <div class="flex items-center gap-2.5">
+        <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background:rgba(121,192,255,0.15)">
+          <iconify-icon icon="lucide:git-branch" style="color:#79c0ff" class="text-sm"></iconify-icon>
         </div>
-        <h3 class="text-base font-bold text-slate-900">Flux d'une commande</h3>
+        <h2 class="text-sm font-bold text-white">Flux d'une commande</h2>
       </div>
-      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+      <div class="rounded-2xl overflow-hidden glass p-5">
         <div class="space-y-0">
-          <div class="flex gap-4">
+          <div v-for="(step, i) in [
+            {n:'1',title:'Validation params',desc:'product_id valide, params complets.', color:'#79c0ff'},
+            {n:'2',title:'Vérification solde',desc:'Solde ≥ prix du produit.', color:'#79c0ff'},
+            {n:'3',title:'Validation joueur',desc:'ID Free Fire vérifié en temps réel (422 si invalide, 0 débit).', color:'#79c0ff'},
+            {n:'4',title:'Réservation atomique',desc:'Solde débité + commande créée en une seule opération.', color:'#79c0ff'},
+            {n:'5',title:'Envoi fournisseur',desc:'Direct API transmet à FazerCards. Remboursement auto si échec.', color:'#79c0ff'},
+          ]" :key="i" class="flex gap-3">
             <div class="flex flex-col items-center">
-              <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">1</div>
-              <div class="w-0.5 h-8 bg-slate-100 my-1"></div>
+              <div class="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 text-white" :style="'background:linear-gradient(135deg,#f97316,#ef4444)'">{{ step.n }}</div>
+              <div v-if="i < 4" class="w-px flex-1 my-1" style="background:rgba(48,54,61,0.8); min-height:20px"></div>
             </div>
-            <div class="pb-6">
-              <p class="text-sm font-bold text-slate-900 mt-1">Vérification paramètres</p>
-              <p class="text-xs text-slate-500 mt-0.5">product_id valide, params complets, solde suffisant.</p>
+            <div class="pb-4">
+              <p class="text-xs font-bold text-white mt-1">{{ step.title }}</p>
+              <p class="text-xs mt-0.5" style="color:#8b949e">{{ step.desc }}</p>
             </div>
           </div>
-          <div class="flex gap-4">
-            <div class="flex flex-col items-center">
-              <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">2</div>
-              <div class="w-0.5 h-8 bg-slate-100 my-1"></div>
+          <!-- Final -->
+          <div class="flex gap-3 mt-1">
+            <div class="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style="background:#56d364">
+              <iconify-icon icon="lucide:check" class="text-black text-xs"></iconify-icon>
             </div>
-            <div class="pb-6">
-              <p class="text-sm font-bold text-slate-900 mt-1">Validation joueur (Free Fire)</p>
-              <p class="text-xs text-slate-500 mt-0.5">L'ID est vérifié en temps réel. Si invalide → erreur 422, aucun débit.</p>
-            </div>
-          </div>
-          <div class="flex gap-4">
-            <div class="flex flex-col items-center">
-              <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">3</div>
-              <div class="w-0.5 h-8 bg-slate-100 my-1"></div>
-            </div>
-            <div class="pb-6">
-              <p class="text-sm font-bold text-slate-900 mt-1">Réservation atomique</p>
-              <p class="text-xs text-slate-500 mt-0.5">Le solde est débité et la commande créée en une seule opération.</p>
-            </div>
-          </div>
-          <div class="flex gap-4">
-            <div class="flex flex-col items-center">
-              <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">4</div>
-              <div class="w-0.5 h-8 bg-slate-100 my-1"></div>
-            </div>
-            <div class="pb-6">
-              <p class="text-sm font-bold text-slate-900 mt-1">Envoi au fournisseur</p>
-              <p class="text-xs text-slate-500 mt-0.5">Direct API transmet la commande à FazerCards en coulisse.</p>
-            </div>
-          </div>
-          <div class="flex gap-4">
-            <div class="flex flex-col items-center">
-              <div class="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center shrink-0">
-                <iconify-icon icon="lucide:check" class="text-white text-sm"></iconify-icon>
-              </div>
-            </div>
-            <div>
-              <p class="text-sm font-bold text-slate-900 mt-1">Résultat</p>
-              <p class="text-xs text-slate-500 mt-0.5">Succès → <code class="font-mono text-emerald-600">status: "success"</code>. Échec → remboursement automatique <code class="font-mono text-red-500">status: "refunded"</code>.</p>
+            <div class="mt-1">
+              <p class="text-xs font-bold text-white">Résultat</p>
+              <p class="text-xs mt-0.5" style="color:#8b949e"><code class="code-font text-emerald-400">status: "success"</code> ou remboursement automatique <code class="code-font text-red-400">status: "refunded"</code>.</p>
             </div>
           </div>
         </div>
@@ -634,14 +601,14 @@
 
   </main>
 
-  <!-- ── Bottom Nav ── -->
-  <footer class="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-100 shadow-[0_-2px_12px_rgba(0,0,0,0.06)]">
+  <!-- ══ BOTTOM NAV ══════════════════════════════════════════════════════════ -->
+  <footer class="fixed bottom-0 left-0 right-0 z-50" style="background:#161b22; border-top:1px solid rgba(48,54,61,0.7)">
     <nav class="flex items-center justify-around px-2 pt-3 pb-8">
-      <a href="/"          class="flex flex-col items-center gap-0.5 text-[10px] text-slate-400 font-medium"><iconify-icon icon="lucide:layout-grid" class="text-xl"></iconify-icon><span>Home</span></a>
-      <a href="/catalogue" class="flex flex-col items-center gap-0.5 text-[10px] text-slate-400 font-medium"><iconify-icon icon="lucide:shopping-bag" class="text-xl"></iconify-icon><span>Services</span></a>
-      <a href="/historique" class="flex flex-col items-center gap-0.5 text-[10px] text-slate-400 font-medium"><iconify-icon icon="lucide:history" class="text-xl"></iconify-icon><span>Historique</span></a>
-      <a href="/api-doc"   class="flex flex-col items-center gap-0.5 text-[10px] text-blue-600 font-bold"><iconify-icon icon="lucide:code-2" class="text-xl"></iconify-icon><span>API Doc</span></a>
-      <a href="/profil"    class="flex flex-col items-center gap-0.5 text-[10px] text-slate-400 font-medium"><iconify-icon icon="lucide:settings" class="text-xl"></iconify-icon><span>Profil</span></a>
+      <a href="/"          class="flex flex-col items-center gap-0.5 text-[10px] nav-inactive font-medium"><iconify-icon icon="lucide:layout-grid" class="text-xl"></iconify-icon><span>Home</span></a>
+      <a href="/catalogue" class="flex flex-col items-center gap-0.5 text-[10px] nav-inactive font-medium"><iconify-icon icon="lucide:shopping-bag" class="text-xl"></iconify-icon><span>Services</span></a>
+      <a href="/historique" class="flex flex-col items-center gap-0.5 text-[10px] nav-inactive font-medium"><iconify-icon icon="lucide:history" class="text-xl"></iconify-icon><span>Historique</span></a>
+      <a href="/api-doc"   class="flex flex-col items-center gap-0.5 text-[10px] nav-active  font-bold">  <iconify-icon icon="lucide:code-2"    class="text-xl"></iconify-icon><span>API Doc</span></a>
+      <a href="/profil"    class="flex flex-col items-center gap-0.5 text-[10px] nav-inactive font-medium"><iconify-icon icon="lucide:settings"   class="text-xl"></iconify-icon><span>Profil</span></a>
     </nav>
   </footer>
 

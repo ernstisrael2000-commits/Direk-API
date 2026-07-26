@@ -56,6 +56,7 @@ const productsRoutes     = require('./routes/products');
 const servicesRoutes     = require('./routes/services');
 const ordersRoutes       = require('./routes/orders');
 const adminRoutes        = require('./routes/admin');
+const publicRoutes       = require('./routes/public');
 
 app.use('/api/v1/auth',         authLimiter, authRoutes);
 app.use('/api/v1/dashboard',    dashboardRoutes);
@@ -66,6 +67,7 @@ app.use('/api/v1/orders',       rechargeLimiter, ordersRoutes);
 app.use('/api/v1/recharge',     rechargeLimiter, rechargeRoutes);  // conservé pour compat
 app.use('/api/v1/products',     productsRoutes);
 app.use('/api/v1/admin',        adminRoutes);
+app.use('/api/v1/public',       publicRoutes);  // catalogue public (sans auth)
 
 // ─── Fichiers statiques ───────────────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public')));
@@ -79,6 +81,7 @@ app.get('/profil',     (req, res) => res.sendFile(path.join(__dirname, 'public/p
 app.get('/login',      (req, res) => res.sendFile(path.join(__dirname, 'public/login.html')));
 app.get('/catalogue',  (req, res) => res.sendFile(path.join(__dirname, 'public/catalogue.html')));
 app.get('/admin',      (req, res) => res.sendFile(path.join(__dirname, 'public/admin.html')));
+app.get('/boutique',   (req, res) => res.sendFile(path.join(__dirname, 'public/boutique.html')));
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
