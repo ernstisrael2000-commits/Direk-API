@@ -32,15 +32,16 @@
   selectedProduit: null,
   params: {},
   balance: 0,
+  hasApiKey: false,
   loading: true,
   loadingProduits: false,
   submitting: false,
   result: null,
   error: null,
+  showApiModal: false,
 
   async init() {
-    await this.loadBalance();
-    await this.loadServices();
+    await Promise.all([this.loadBalance(), this.loadServices()]);
   },
 
   async loadBalance() {
@@ -48,7 +49,10 @@
       const r = await fetch('/api/v1/dashboard');
       if (r.status === 401) { window.location.href = '/login'; return; }
       const d = await r.json();
-      if (d.ok) this.balance = d.reseller.balance_htg;
+      if (d.ok) {
+        this.balance = d.reseller.balance_htg;
+        this.hasApiKey = d.reseller.hasApiKey;
+      }
     } catch(e) {}
   },
 
@@ -60,7 +64,11 @@
       const d = await r.json();
       if (d.ok) this.services = d.services;
     } catch(e) {}
-    this.loading = false;
+    finally { this.loading = false; }
+  },
+
+  openIntegration() {
+    this.showApiModal = true;
   },
 
   async selectService(svc) {
@@ -243,23 +251,40 @@
       </div>
 
       <!-- Product list -->
-      <button v-else v-for="p in produits" :key="p.id"
-        @click="selectProduit(p)"
-        class="w-full bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center justify-between active:scale-[0.98] transition-transform text-left">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 shrink-0">
-            <iconify-icon icon="lucide:zap" class="text-lg"></iconify-icon>
+      <template v-else>
+        <button v-for="p in produits" :key="p.id"
+          @click="selectProduit(p)"
+          class="w-full bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center justify-between active:scale-[0.98] transition-transform text-left">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 shrink-0">
+              <iconify-icon icon="lucide:zap" class="text-lg"></iconify-icon>
+            </div>
+            <div>
+              <p class="text-sm font-bold text-slate-900">{{ p.nom }}</p>
+              <p class="text-[10px] text-slate-400 font-medium mt-0.5">via {{ p.fournisseur || 'Fournisseur' }}</p>
+            </div>
           </div>
-          <div>
-            <p class="text-sm font-bold text-slate-900">{{ p.nom }}</p>
-            <p class="text-[10px] text-slate-400 font-medium mt-0.5">via {{ p.fournisseur || 'Fournisseur' }}</p>
+          <div class="text-right shrink-0 ml-2">
+            <p class="text-sm font-bold text-blue-700">{{ formatHTG(p.prix_vente_htg) }}</p>
+            <p class="text-[10px] text-slate-400">HTG</p>
           </div>
+        </button>
+
+        <!-- Bouton intégration API -->
+        <div class="mt-2 pt-4 border-t border-slate-100">
+          <button @click="openIntegration()"
+            class="w-full flex items-center gap-3 p-4 rounded-2xl border-2 border-dashed border-blue-200 bg-blue-50/60 hover:bg-blue-50 active:scale-[0.98] transition-all text-left">
+            <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+              <iconify-icon icon="lucide:code-2" class="text-blue-600 text-lg"></iconify-icon>
+            </div>
+            <div class="flex-1">
+              <p class="text-sm font-bold text-blue-800">L'intégrer dans mon site web</p>
+              <p class="text-[10px] text-blue-500 mt-0.5">Accédez à l'API pour automatiser les recharges</p>
+            </div>
+            <iconify-icon icon="lucide:arrow-right" class="text-blue-400 text-lg shrink-0"></iconify-icon>
+          </button>
         </div>
-        <div class="text-right shrink-0 ml-2">
-          <p class="text-sm font-bold text-blue-700">{{ formatHTG(p.prix_vente_htg) }}</p>
-          <p class="text-[10px] text-slate-400">HTG</p>
-        </div>
-      </button>
+      </template>
     </div>
 
     <!-- ═══ STEP: FORM ════════════════════════════════════════════ -->
@@ -421,6 +446,89 @@
     </div>
 
   </main>
+
+  <!-- ═══ MODAL: Intégration API ══════════════════════════════════ -->
+  <div v-if="showApiModal"
+    class="fixed inset-0 z-[60] flex items-end justify-center"
+    @click.self="showApiModal = false">
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+    <!-- Bottom sheet -->
+    <div class="relative w-full max-w-lg bg-white rounded-t-3xl px-6 pt-6 pb-10 shadow-2xl slide-up">
+      <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-6"></div>
+
+      <!-- CAS 1 : reseller a une clé API ─────────────────────── -->
+      <template v-if="hasApiKey">
+        <div class="flex items-center gap-4 mb-5">
+          <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center shadow-lg shadow-blue-200 shrink-0">
+            <iconify-icon icon="lucide:code-2" class="text-white text-2xl"></iconify-icon>
+          </div>
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">Intégration API</h2>
+            <p class="text-xs text-slate-400 mt-0.5">Automatisez les recharges sur votre site</p>
+          </div>
+        </div>
+        <div class="space-y-3 mb-6">
+          <div class="flex items-start gap-3 p-3 bg-slate-50 rounded-xl">
+            <iconify-icon icon="lucide:key" class="text-blue-500 text-base shrink-0 mt-0.5"></iconify-icon>
+            <div>
+              <p class="text-xs font-bold text-slate-800">Clé API sécurisée</p>
+              <p class="text-[11px] text-slate-400 mt-0.5">Votre clé <code class="font-mono bg-slate-100 px-1 rounded">dk_live_…</code> est dans votre Profil.</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-3 p-3 bg-slate-50 rounded-xl">
+            <iconify-icon icon="lucide:zap" class="text-orange-500 text-base shrink-0 mt-0.5"></iconify-icon>
+            <div>
+              <p class="text-xs font-bold text-slate-800">Un seul appel API</p>
+              <p class="text-[11px] text-slate-400 mt-0.5">Envoyez l'ID joueur + le pack — recharge en quelques secondes.</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-3 p-3 bg-slate-50 rounded-xl">
+            <iconify-icon icon="lucide:book-open" class="text-emerald-500 text-base shrink-0 mt-0.5"></iconify-icon>
+            <div>
+              <p class="text-xs font-bold text-slate-800">Documentation complète</p>
+              <p class="text-[11px] text-slate-400 mt-0.5">Exemples cURL &amp; JS, codes d'erreur, flow de commande.</p>
+            </div>
+          </div>
+        </div>
+        <div class="space-y-3">
+          <a href="/api-doc"
+            class="flex items-center justify-center gap-2 w-full py-4 rounded-2xl bg-gradient-to-r from-[#1E40AF] to-[#3B82F6] text-white text-sm font-bold shadow-lg shadow-blue-200 active:scale-[0.98] transition-transform">
+            <iconify-icon icon="lucide:book-open"></iconify-icon>
+            Voir la documentation API
+          </a>
+          <button @click="showApiModal = false"
+            class="w-full py-3.5 rounded-2xl bg-slate-100 text-slate-600 text-sm font-bold active:scale-[0.98] transition-transform">
+            Fermer
+          </button>
+        </div>
+      </template>
+
+      <!-- CAS 2 : reseller sans clé API ──────────────────────── -->
+      <template v-else>
+        <div class="flex flex-col items-center text-center gap-4 mb-6">
+          <div class="w-16 h-16 rounded-2xl bg-amber-100 flex items-center justify-center">
+            <iconify-icon icon="lucide:key" class="text-amber-500 text-3xl"></iconify-icon>
+          </div>
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">Générez votre clé API</h2>
+            <p class="text-sm text-slate-500 mt-1">Vous n'avez pas encore de clé API. Créez-en une depuis votre Profil pour accéder à l'intégration.</p>
+          </div>
+        </div>
+        <div class="space-y-3">
+          <a href="/profil"
+            class="flex items-center justify-center gap-2 w-full py-4 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 text-white text-sm font-bold shadow-lg shadow-amber-200 active:scale-[0.98] transition-transform">
+            <iconify-icon icon="lucide:user"></iconify-icon>
+            Aller au Profil
+          </a>
+          <button @click="showApiModal = false"
+            class="w-full py-3.5 rounded-2xl bg-slate-100 text-slate-600 text-sm font-bold active:scale-[0.98] transition-transform">
+            Annuler
+          </button>
+        </div>
+      </template>
+    </div>
+  </div>
 
   <!-- Bottom nav -->
   <nav class="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-100 shadow-[0_-2px_12px_rgba(0,0,0,0.06)] flex items-center justify-around px-2 pt-3 pb-8">

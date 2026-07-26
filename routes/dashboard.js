@@ -80,6 +80,7 @@ router.get('/', requireAuth, async (req, res) => {
       balance_htg: (reseller.balance / 100).toFixed(2),
       status: reseller.status,
       apiKeyPreview,
+      hasApiKey: !!reseller.api_key_hash,
     },
     recentTransactions,
   });
