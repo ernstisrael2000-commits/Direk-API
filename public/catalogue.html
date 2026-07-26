@@ -156,7 +156,7 @@
   formatHTG(v) {
     return parseFloat(v).toLocaleString('fr', { minimumFractionDigits: 2 });
   }
-}" class="flex flex-col min-h-screen">
+}" @vue:mounted="init()" class="flex flex-col min-h-screen">
 
   <!-- Header -->
   <header class="shrink-0 pt-14 px-6 pb-4 bg-white border-b border-slate-100 shadow-sm">
