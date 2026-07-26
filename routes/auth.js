@@ -160,11 +160,9 @@ router.post('/register', async (req, res) => {
 
     console.info(`[register] Nouveau compte : ${email} (id=${reseller.id})`);
 
-    // La clé API n'est retournée qu'UNE SEULE FOIS — le client doit la sauvegarder.
     return res.status(201).json({
       ok:      true,
       reseller: { id: reseller.id, nom: reseller.nom, email: reseller.email },
-      apiKey,  // valeur brute, une seule fois
     });
   });
 });
@@ -407,9 +405,7 @@ router.get('/callback', async (req, res) => {
     resellerId  = newReseller.id;
     resellerNom = newReseller.nom;
 
-    // Clé API stockée temporairement en session (affichée une seule fois)
-    // Elle sera détruite avec la session ou à la prochaine demande
-    req.session.newApiKey = apiKey;
+    // La clé API est accessible via /profil → "Régénérer ma clé"
   }
 
   // Régénération de l'ID de session (anti-fixation)

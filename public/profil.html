@@ -71,7 +71,7 @@
     </div>
   </header>
 
-  <main class="flex-1 overflow-y-auto px-6 py-6 space-y-8">
+  <main class="flex-1 overflow-y-auto px-6 py-6 pb-28 space-y-8">
 
     <!-- Avatar + nom -->
     <div class="flex flex-col items-center gap-4 py-2">
@@ -194,12 +194,13 @@
   </main>
 
   <!-- Bottom nav -->
-  <footer class="shrink-0 pb-[34px] px-6 py-4 bg-white border-t border-slate-100">
-    <nav class="flex items-center justify-around">
-      <a href="/"           class="flex flex-col items-center gap-1 text-xs text-slate-400 font-medium"><iconify-icon icon="lucide:layout-grid" class="text-2xl"></iconify-icon><span>Home</span></a>
-      <a href="/historique" class="flex flex-col items-center gap-1 text-xs text-slate-400 font-medium"><iconify-icon icon="lucide:history" class="text-2xl"></iconify-icon><span>Historique</span></a>
-      <a href="/api-doc"    class="flex flex-col items-center gap-1 text-xs text-slate-400 font-medium"><iconify-icon icon="lucide:code-2" class="text-2xl"></iconify-icon><span>API Doc</span></a>
-      <a href="/profil"     class="flex flex-col items-center gap-1 text-xs text-blue-600 font-bold"><iconify-icon icon="lucide:settings" class="text-2xl"></iconify-icon><span>Profil</span></a>
+  <footer class="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-100 shadow-[0_-2px_12px_rgba(0,0,0,0.06)]">
+    <nav class="flex items-center justify-around px-2 pt-3 pb-8">
+      <a href="/"           class="flex flex-col items-center gap-0.5 text-[10px] text-slate-400 font-medium"><iconify-icon icon="lucide:layout-grid" class="text-xl"></iconify-icon><span>Home</span></a>
+      <a href="/catalogue"  class="flex flex-col items-center gap-0.5 text-[10px] text-slate-400 font-medium"><iconify-icon icon="lucide:shopping-bag" class="text-xl"></iconify-icon><span>Services</span></a>
+      <a href="/historique" class="flex flex-col items-center gap-0.5 text-[10px] text-slate-400 font-medium"><iconify-icon icon="lucide:history" class="text-xl"></iconify-icon><span>Historique</span></a>
+      <a href="/api-doc"    class="flex flex-col items-center gap-0.5 text-[10px] text-slate-400 font-medium"><iconify-icon icon="lucide:code-2" class="text-xl"></iconify-icon><span>API Doc</span></a>
+      <a href="/profil"     class="flex flex-col items-center gap-0.5 text-[10px] text-blue-600 font-bold"><iconify-icon icon="lucide:settings" class="text-xl"></iconify-icon><span>Profil</span></a>
     </nav>
   </footer>
 
