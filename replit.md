@@ -8,9 +8,9 @@ Les resellers rechargent un solde HTG via Pay'm, puis appellent une API pour dé
 
 - **Serveur** : Node.js + Express.js (`server.js`)
 - **Frontend** : HTML/CSS + Tailwind CDN + petite-vue + Iconify (7 pages statiques dans `public/`)
-- **Base de données prévue** : Supabase PostgreSQL (pas encore connecté)
-- **Paiement wallet** : Pay'm (`plopplop.solutionip.app`)
-- **Fournisseur recharges** : FazerCards (`api.fzr.cards`)
+- **Base de données** : Supabase PostgreSQL (connecté ✅)
+- **Paiement wallet** : Pay'm (`plopplop.solutionip.app`) (connecté ✅)
+- **Fournisseur recharges** : FazerCards (`api.fzr.cards`) (connecté ✅)
 
 ## Lancer le projet
 
@@ -46,7 +46,8 @@ Le serveur écoute sur le port `3000` (ou `$PORT`).
 ## État actuel
 
 - Phase 1 terminée : 7 pages frontend intégrées, serveur Express opérationnel
-- Supabase, Pay'm et FazerCards pas encore connectés
+- Supabase, Pay'm et FazerCards connectés ✅
+- Workflow "Direct API" configuré sur Replit (port 3000)
 
 ## User preferences
 
